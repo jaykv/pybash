@@ -20,3 +20,4 @@ print((>cat test.txt).decode('utf-8').strip())
 
 # TODO:
 #>echo "hello" >> test.txt
+#>cat test.txt | sed 's/HELLO/HOWDY/g'

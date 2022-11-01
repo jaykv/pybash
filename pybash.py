@@ -17,7 +17,7 @@ def transform_source(source, **_kwargs):
             parsed_line = shlex.split(token.line)
             command = get_bash_command(parsed_line)
             token.string = build_subprocess_list_cmd("run", command) + '\n'         
-            new_tokens.append(token)        
+            new_tokens.append(token)
         elif '= >' in token.line:
             # variabilized--
             # a = >cat test.txt

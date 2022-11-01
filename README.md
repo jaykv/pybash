@@ -49,3 +49,8 @@ cp_test()
 # Usage
 1. `pip install ideas`
 2. `python run.py` OR directly, `python -m ideas demo -a pybash`
+
+
+# TODO
+- Redirection: `>echo "hello" >> test.txt`
+- Pipes: `>cat test.txt | sed 's/HELLO/HOWDY/g'`
