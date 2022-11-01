@@ -12,18 +12,30 @@ def transform_source(source, **_kwargs):
             continue
         
         if token == ">":
+            # execed--
             # >ls -la
             parsed_line = shlex.split(token.line)
-            command = parse_bash_command(parsed_line)
-            token.string = build_subprocess_list_cmd("run", command)            
+            command = get_bash_command(parsed_line)
+            token.string = build_subprocess_list_cmd("run", command) + '\n'         
             new_tokens.append(token)        
         elif '= >' in token.line:
+            # variabilized--
             # a = >cat test.txt
             parsed_line = shlex.split(token.line)
             start_index = get_start_index(parsed_line)
-            command = parse_bash_command(parsed_line, start_index=start_index)
+            command = get_bash_command(parsed_line, start_index=start_index)
             token.string = ' '.join(parsed_line[:start_index])
-            token.string += build_subprocess_list_cmd("check_output", command)
+            token.string += build_subprocess_list_cmd("check_output", command) + '\n'
+            new_tokens.append(token)
+        elif '(>' in token.line:
+            # wrapped--
+            # print(>cat test.txt)
+            parsed_line = shlex.split(token.line)
+            start_index = get_start_index(parsed_line)
+            command = get_bash_command(parsed_line, start_index=start_index, wrapped=True)
+            par_count = parsed_line[start_index].count('(')
+            token.string = ' '.join(parsed_line[:start_index]) + parsed_line[start_index][:parsed_line[start_index].index('>')]
+            token.string += build_subprocess_list_cmd("check_output", command) + (')' * par_count) + '\n'
             new_tokens.append(token)
         else:
             new_tokens.extend(line)
@@ -59,21 +71,33 @@ def get_start_index(parsed_line: list) -> int:
         if '>' in val:
             return i
 
-def parse_bash_command(parsed_line: list, start_index: int=None) -> list:
+def get_bash_command(parsed_line: list, start_index: int=None, wrapped: bool=None) -> list:
     """Parses line to bash command
 
     Args:
         parsed_line (list): line to parse
         start_index (int, optional): index to start parsing command from. Defaults to None.
-
+        wrapped (bool, optional): input is surrounded by parentheses
+        
     Returns:
         list: parsed command list
     """
+    # find which arg index the > is at
     if not start_index:
         start_index = get_start_index(parsed_line)
         
+    # strip everything before that index-- not part of the command
     command = parsed_line[start_index:]
-    command[0] = command[0][1:]
+    
+    # > may be at the beginning or somewhere in the middle of this arg
+    # examples: >ls, print(>cat => strip up to and including >
+    command[0] = command[0][command[0].index('>')+1:]
+    
+    # pop all consecutive end parentheses if wrapped-- not part of the command
+    if wrapped:
+        while command[-1][-1] == ')':
+            command[-1] = command[-1][:-1]
+        
     return command
 
 def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:
@@ -90,7 +114,7 @@ def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:
     if kwargs:
         for k, v in kwargs.items():
             command += f", {k}={v}"
-    command += ")\n"
+    command += ")"
     return command
 
 def build_subprocess_list_cmd(method: str, args: list, **kwargs) -> str:
@@ -110,5 +134,5 @@ def build_subprocess_list_cmd(method: str, args: list, **kwargs) -> str:
     if kwargs:
         for k, v in kwargs.items():
             command += f", {k}={v}"
-    command += ")\n"
+    command += ")"
     return command

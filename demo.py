@@ -4,6 +4,8 @@ def cp_test():
 
 cp_test()
 
+print(str(>cat test.txt))
+
 # simple bash command execution with output
 >python --version
 >echo \\nthis is an echo
@@ -12,6 +14,5 @@ cp_test()
 out = >cat test.txt
 test_data = out.decode('utf-8').strip()
 print(test_data.replace("HELLO", "HOWDY"))
-
 # TODO:
 >echo "hello" >> test.txt
