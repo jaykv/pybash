@@ -93,7 +93,7 @@ def get_bash_command(parsed_line: list, start_index: int=None, wrapped: bool=Non
     
     # > may be at the beginning or somewhere in the middle of this arg
     # examples: >ls, print(>cat => strip up to and including >
-    command[0] = command[0][command[0].index('>')+1:]
+    command[0] = command[0][command[0].index('>')+1:].strip()
     
     # remove everything after and including first )- not part of the command
     if wrapped:
