@@ -6,7 +6,7 @@ cp_test()
 
 # simple bash command execution with output
 >python --version
->echo \nthis is an echo\n
+>echo \\nthis is an echo
 
 # set output to python variable directly
 out = >cat test.txt
@@ -14,4 +14,4 @@ test_data = out.decode('utf-8').strip()
 print(test_data.replace("HELLO", "HOWDY"))
 
 # TODO:
-# >echo "hello" >> test.txt
+>echo "hello" >> test.txt

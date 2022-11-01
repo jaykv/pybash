@@ -1,5 +1,6 @@
 from ideas import import_hook
 import token_utils
+import shlex
 
 def transform_source(source, **_kwargs):
     """Convert >bash commands to subprocess calls"""
@@ -12,13 +13,13 @@ def transform_source(source, **_kwargs):
         
         if token == ">":
             # >ls -la
-            parsed_line = [tok for tok in token.line.split(' ') if tok]
+            parsed_line = shlex.split(token.line)
             command = parse_bash_command(parsed_line)
             token.string = build_subprocess_list_cmd("run", command)            
             new_tokens.append(token)        
         elif '= >' in token.line:
             # a = >cat test.txt
-            parsed_line = [tok for tok in token.line.split(' ') if tok]
+            parsed_line = shlex.split(token.line)
             start_index = get_start_index(parsed_line)
             command = parse_bash_command(parsed_line, start_index=start_index)
             token.string = ' '.join(parsed_line[:start_index])
@@ -73,7 +74,6 @@ def parse_bash_command(parsed_line: list, start_index: int=None) -> list:
         
     command = parsed_line[start_index:]
     command[0] = command[0][1:]
-    command[-1] = command[-1][:-1]
     return command
 
 def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:

@@ -14,7 +14,7 @@ cp_test()
 
 # simple command execution with output
 >python --version
->echo \nthis is an echo\n
+>echo \\nthis is an echo
 
 # set output to variable and parse directly
 out = >cat test.txt
