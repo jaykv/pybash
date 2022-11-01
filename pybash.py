@@ -45,12 +45,29 @@ def add_hook(**_kwargs):
 
 
 ## UTILS ##
-def get_start_index(parsed_line: list):
+def get_start_index(parsed_line: list) -> int:
+    """Get the start index of first matching >
+
+    Args:
+        parsed_line (list): line to parse
+
+    Returns:
+        int: starting index
+    """
     for i, val in enumerate(parsed_line):
         if '>' in val:
             return i
 
 def parse_bash_command(parsed_line: list, start_index: int=None) -> list:
+    """Parses line to bash command
+
+    Args:
+        parsed_line (list): line to parse
+        start_index (int, optional): index to start parsing command from. Defaults to None.
+
+    Returns:
+        list: parsed command list
+    """
     if not start_index:
         start_index = get_start_index(parsed_line)
         
@@ -60,6 +77,15 @@ def parse_bash_command(parsed_line: list, start_index: int=None) -> list:
     return command
 
 def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:
+    """Builds subprocess command with string arg
+
+    Args:
+        method (str): subprocess method name
+        arg (str): string arg
+
+    Returns:
+        str: subprocess command
+    """
     command = f'subprocess.{method}({arg}'
     if kwargs:
         for k, v in kwargs.items():
@@ -68,6 +94,15 @@ def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:
     return command
 
 def build_subprocess_list_cmd(method: str, args: list, **kwargs) -> str:
+    """Builds subprocess command with list args
+
+    Args:
+        method (str): subprocess method name
+        args (list): list of args
+
+    Returns:
+        str: subprocess command
+    """
     command = f'subprocess.{method}(['
     for arg in args:
         command += '\"' + arg + '\",'
