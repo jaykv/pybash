@@ -7,21 +7,28 @@ Streamline bash-command execution from python with an easy-to-use syntax. It com
 
 ```
 # PYBASH DEMO #
-
 def cp_test():
     >cp test.txt test_copy.txt
 
 cp_test()
 
->echo \nthis is an echo \n
->cat test.txt
+# simple command execution with output
+>python --version
+>echo \nthis is an echo\n
+
+# set output to variable and parse directly
+out = >cat test.txt
+test_data = out.decode('utf-8').strip()
+print(test_data.replace("HELLO", "HOWDY"))
 ```
 
 Outputs:
 ```
+Python 3.9.14
+
 this is an echo
 
-HELLO WORLD
+HOWDY WORLD
 ```
 
 # Usage
