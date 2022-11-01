@@ -6,10 +6,10 @@ def cp_test():
 cp_test()
 
 >ls -la
->echo \nthis is an echo \n
->cat test.txt
+>echo \nthis is an echo\n
+#test_data = >cat test.txt
 
+#print(test_data.replace("HELLO", "HOWDY"))
 
 # TODO:
-# test_data = >cat test.txt
 # >echo "hello" >> test.txt

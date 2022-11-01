@@ -26,4 +26,4 @@ HELLO WORLD
 
 # Usage
 1. `pip install ideas`
-2. `python -m ideas demo -a pybash`
+2. `python run.py` OR directly, `python -m ideas demo -a pybash`
