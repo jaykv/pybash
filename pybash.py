@@ -31,11 +31,13 @@ def transform_source(source, **_kwargs):
             # wrapped--
             # print(>cat test.txt)
             parsed_line = shlex.split(token.line)
+            raw_line = [tok for tok in token.line.split(' ') if tok]
             start_index = get_start_index(parsed_line)
             command = get_bash_command(parsed_line, start_index=start_index, wrapped=True)
-            par_count = parsed_line[start_index].count('(')
-            token.string = ' '.join(parsed_line[:start_index]) + parsed_line[start_index][:parsed_line[start_index].index('>')]
-            token.string += build_subprocess_list_cmd("check_output", command) + (')' * par_count) + '\n'
+            
+            # shlex strips out single quotes and double quotes-- use raw_line for the code around the wrapped command
+            token.string = ' '.join(raw_line[:start_index]) + raw_line[start_index][:raw_line[start_index].index('>')]
+            token.string += build_subprocess_list_cmd("check_output", command) + raw_line[-1][raw_line[-1].index(')'):] + '\n'
             new_tokens.append(token)
         else:
             new_tokens.extend(line)
@@ -93,10 +95,12 @@ def get_bash_command(parsed_line: list, start_index: int=None, wrapped: bool=Non
     # examples: >ls, print(>cat => strip up to and including >
     command[0] = command[0][command[0].index('>')+1:]
     
-    # pop all consecutive end parentheses if wrapped-- not part of the command
+    # remove everything after and including first )- not part of the command
     if wrapped:
-        while command[-1][-1] == ')':
-            command[-1] = command[-1][:-1]
+        if ')' not in command[-1]:
+            raise SyntaxError("Missing end parentheses")
+        
+        command[-1] = command[-1][:command[-1].index(')')]
         
     return command
 
