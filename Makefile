@@ -1,13 +1,12 @@
 check: lint test
 
-SOURCE_FILES=pybash.py
+SOURCE_FILES=pybash.py test_pybash.py
 
 install:
 	pip install -e .
 
 test:
-	pip install -U -e .
-	pytest tests -vv -rs
+	pytest test_pybash.py -vv -rs
 
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache
@@ -28,7 +27,7 @@ format:
 lint:
 	isort --check --diff --project=pybash ${SOURCE_FILES}
 	black --check --diff ${SOURCE_FILES}
-	flake8 . --count --show-source --statistics
-	flake8 . --count --exit-zero --statistics
+	flake8 $(SOURCE_FILES) --count --show-source --statistics
+	flake8 $(SOURCE_FILES) --count --exit-zero --statistics
 
 .PHONY: test clean

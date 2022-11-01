@@ -139,6 +139,7 @@ def build_subprocess_list_cmd(method: str, args: list, **kwargs) -> str:
     command = f'subprocess.{method}(['
     for arg in args:
         command += '\"' + arg + '\",'
+    command = command[:-1]
     command += ']'
     if kwargs:
         for k, v in kwargs.items():

@@ -5,3 +5,4 @@ pybash.add_hook()
 
 if __name__ == "__main__":
     import demo
+    demo.run()

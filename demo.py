@@ -1,23 +1,23 @@
 # PYBASH DEMO
+def run():
+    # 1. use inside methods
+    def cp_test():
+        >cp test.txt test_copy.txt
 
-# 1. use inside methods
-def cp_test():
-    >cp test.txt test_copy.txt
+    cp_test()
 
-cp_test()
+    # 2. simple bash command execution with output
+    >python --version
+    >echo \\nthis is an echo
 
-# 2. simple bash command execution with output
->python --version
->echo \\nthis is an echo
+    # 3. set output to python variable directly
+    out = >cat test.txt
+    test_data = out.decode('utf-8').strip()
+    print(test_data.replace("HELLO", "HOWDY"))
 
-# 3. set output to python variable directly
-out = >cat test.txt
-test_data = out.decode('utf-8').strip()
-print(test_data.replace("HELLO", "HOWDY"))
+    # 4. wrapped, in-line execution
+    print((>cat test.txt).decode('utf-8').strip())
 
-# 4. wrapped, in-line execution
-print((>cat test.txt).decode('utf-8').strip())
-
-# TODO:
-#>echo "hello" >> test.txt
-#>cat test.txt | sed 's/HELLO/HOWDY/g'
+    # TODO:
+    #>echo "hello" >> test.txt
+    #>cat test.txt | sed 's/HELLO/HOWDY/g'
