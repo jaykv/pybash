@@ -5,7 +5,7 @@ Streamline bash-command execution from python with an easy-to-use syntax. It com
 
 # Example
 
-```
+```python
 # PYBASH DEMO #
 def cp_test():
     >cp test.txt test_copy.txt
