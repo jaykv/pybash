@@ -3,6 +3,7 @@ import shlex
 import token_utils
 from ideas import import_hook
 
+
 def transform_source(source, **_kwargs):
     """Convert >bash commands to subprocess calls"""
     new_tokens = []
@@ -67,9 +68,10 @@ def add_hook(**_kwargs):
 
 ## UTILS ##
 
+
 class Pipers:
     PIPES = ['|', '>', '>>']
-    
+
     @classmethod
     def get_piper(cls, pipe: str):
         if pipe == '|':
@@ -79,81 +81,94 @@ class Pipers:
         elif pipe == '>>':
             return cls.chain_dredirect_command
         return None
-    
+
     @classmethod
-    def chain_pipe_command(cls, command: list, pipeline: list, start_index: int=0, **kwargs):
+    def chain_pipe_command(cls, command: list, pipeline: list, start_index: int = 0, **kwargs):
         first_idx, _ = pipeline.pop(0)
         pre_command = command[start_index:first_idx]
         cmd1 = build_subprocess_list_cmd('Popen', pre_command, stdout='subprocess.PIPE', **kwargs)
-        
+
         if len(pipeline) == 0:
             ## No other pipes
-            post_command = command[first_idx+1:]
+            post_command = command[first_idx + 1 :]
             cmd2 = build_subprocess_list_cmd('run', post_command, stdin='cmd1.stdout')
             return f"cmd1 = {cmd1}; cmd2 = {cmd2}"
-        
+
         out = f"cmd1 = {cmd1};"
         while len(pipeline) > 0:
             idx, piper = pipeline[0]
-            cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx+1, stdin="cmd1.stdout")
+            cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx + 1, stdin="cmd1.stdout")
             out += cmd
             first_idx = idx
-            
+
         return out
-    
-    @classmethod 
-    def chain_redirect(cls, command: list, pipeline: list, start_index: int=0, fvar: str= "fout", fmode: str="wb", chained: bool=False,  **kwargs):
+
+    @classmethod
+    def chain_redirect(
+        cls,
+        command: list,
+        pipeline: list,
+        start_index: int = 0,
+        fvar: str = "fout",
+        fmode: str = "wb",
+        chained: bool = False,
+        **kwargs,
+    ):
         first_idx, _ = pipeline.pop(0)
         pre_command = command[start_index:first_idx]
-        filename = command[first_idx+1:first_idx+2][0]
-        
+        filename = command[first_idx + 1 : first_idx + 2][0]
+
         if chained:
             # file-to-file redirection so cat from source file
             pre_command.insert(0, 'cat')
-            
+
         # out to file
         fout = f'open("{filename}", "{fmode}")'
         cmd1 = build_subprocess_list_cmd("run", pre_command, stdout=fvar, **kwargs)
-            
+
         if len(pipeline) == 0:
             return f"{fvar} = {fout}; cmd1 = {cmd1}"
-        
+
         out = f"{fvar} = {fout}; cmd1 = {cmd1};"
         while len(pipeline) > 0:
             idx, piper = pipeline[0]
             fvar = f"fout{idx}"
             if piper in ['>', '>>']:
-                cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx+1, fvar=fvar, chained=True)
+                cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx + 1, fvar=fvar, chained=True)
             else:
-                cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx+1, stdin=fvar)
+                cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx + 1, stdin=fvar)
             out += cmd
             first_idx = idx
-            
-        
+
         return out
-    
+
     @classmethod
-    def chain_sredirect_command(cls, command: list, pipeline: list, start_index: int=0, fvar: str="fout", chained: bool=False, **kwargs):
+    def chain_sredirect_command(
+        cls, command: list, pipeline: list, start_index: int = 0, fvar: str = "fout", chained: bool = False, **kwargs
+    ):
         return cls.chain_redirect(command, pipeline, start_index, fmode="wb", fvar=fvar, chained=chained, **kwargs)
-    
+
     @classmethod
-    def chain_dredirect_command(cls, command: list, pipeline: list, start_index: int=0, fvar: str="fout", chained: bool=False, **kwargs):
+    def chain_dredirect_command(
+        cls, command: list, pipeline: list, start_index: int = 0, fvar: str = "fout", chained: bool = False, **kwargs
+    ):
         return cls.chain_redirect(command, pipeline, start_index, fmode="ab", fvar=fvar, chained=chained, **kwargs)
-    
+
+
 class Pipeline:
     __slots__ = ['command', 'pipeline']
-    
+
     def __init__(self, command: list):
         self.command = command
         self.pipeline = [(i, arg) for i, arg in enumerate(self.command) if arg in Pipers.PIPES]
-    
+
     def parse_command(self):
         if not self.pipeline:
             return self.command
-        
+
         _, first_piper = self.pipeline[0]
         return Pipers.get_piper(first_piper)(self.command, self.pipeline)
-        
+
 
 def get_start_index(parsed_line: list) -> int:
     """Get the start index of first matching >
