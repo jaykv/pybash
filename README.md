@@ -37,6 +37,30 @@ outputs:
 HELLO WORLD
 ```
 
+### Redirection
+```python
+>echo "hello" >> test4.txt
+```
+
+### Pipe chaining
+```python
+>cat test.txt | sed 's/HELLO/HOWDY/g' | sed 's/HOW/WHY/g' | sed 's/WHY/WHEN/g'
+```
+outputs:
+```
+WHENDY WORLD
+```
+
+### Redirection chaining
+```python
+>cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test1.txt >> test2.txt > test3.txt
+```
+
+### Chaining pipes and redirection- works in tandem!
+```python
+>cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test5.txt
+```
+
 #### Also works inside methods!
 ```python
 # PYBASH DEMO #

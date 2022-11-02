@@ -35,6 +35,19 @@ def test_method_exec():
     )
 
 
+def test_pipe_basic():
+    assert run_bash(">cat test.txt | sed 's/HELLO/HOWDY/g'") == 'cmd1 = subprocess.Popen(["cat","test.txt"], stdout=subprocess.PIPE); cmd2 = subprocess.run(["sed","s/HELLO/HOWDY/g"], stdin=cmd1.stdout)\n'
+    assert run_bash(">cat test.txt > test2.txt") == 'fout = open("test2.txt", "wb"); cmd1 = subprocess.run(["cat","test.txt"], stdout=fout)\n'
+    
+def test_pipe_redirect():
+    assert run_bash(">cat test.txt | sed 's/HELLO/HOWDY/g' > test2.txt") == 'cmd1 = subprocess.Popen(["cat","test.txt"], stdout=subprocess.PIPE);fout = open("test2.txt", "wb"); cmd1 = subprocess.run(["sed","s/HELLO/HOWDY/g"], stdout=fout, stdin=cmd1.stdout)\n'
+
+def test_pipe_pipe_pipe():
+    assert run_bash(">cat test.txt | sed 's/HELLO/HOWDY/g' | sed 's/HOW/WHY/g' | sed 's/WHY/WHEN/g'") == 'cmd1 = subprocess.Popen(["cat","test.txt"], stdout=subprocess.PIPE);cmd1 = subprocess.Popen(["sed","s/HELLO/HOWDY/g"], stdout=subprocess.PIPE, stdin=cmd1.stdout);cmd1 = subprocess.Popen(["sed","s/HOW/WHY/g"], stdout=subprocess.PIPE, stdin=cmd1.stdout); cmd2 = subprocess.run(["sed","s/WHY/WHEN/g"], stdin=cmd1.stdout)\n'
+
+def test_pipe_chained_redirect():
+    assert run_bash(">cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test1.txt >> test2.txt > test3.txt") == 'cmd1 = subprocess.Popen(["cat","test.txt"], stdout=subprocess.PIPE);fout = open("test1.txt", "wb"); cmd1 = subprocess.run(["sed","s/HELLO/HOWDY\\n/g"], stdout=fout, stdin=cmd1.stdout);fout7 = open("test2.txt", "ab"); cmd1 = subprocess.run(["cat","test1.txt"], stdout=fout7);fout9 = open("test3.txt", "wb"); cmd1 = subprocess.run(["cat","test2.txt"], stdout=fout9)\n'
+
 def test_no_parse():
     assert run_bash('if 5 > 4:') == 'if 5 > 4:'
     assert run_bash('if (pred1 and pred2) > 0:') == 'if (pred1 and pred2) > 0:'
