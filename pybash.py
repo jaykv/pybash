@@ -70,18 +70,42 @@ def add_hook(**_kwargs):
 
 
 class Pipers:
-    PIPES = ['|', '>', '>>']
+    """Handles the logic of chaining operators"""
+    
+    OPS = ['|', '>', '>>', '<', '&&']
 
     @classmethod
-    def get_piper(cls, pipe: str):
-        if pipe == '|':
+    def get_piper(cls, op: str):
+        if op == '|':
+            # Pipe output to next command
             return cls.chain_pipe_command
-        elif pipe == '>':
+        elif op == '>':
+            # Write to out file
             return cls.chain_sredirect_command
-        elif pipe == '>>':
+        elif op == '>>':
+            # Append to out file
             return cls.chain_dredirect_command
+        elif op == '<':
+            # Redirect file as input to command
+            return cls.chain_iredirect_command
+        elif op == '&&':
+            # Run next command only if previous succeeds
+            return cls.chain_and_command
         return None
 
+
+    @classmethod
+    def chain_iredirect_command(cls, command: list, pipeline: list, **kwargs):
+        raise NotImplementedError
+    
+    @classmethod
+    def chain_and_command(cls, command: list, pipeline: list, **kwargs):
+        raise NotImplementedError
+    
+    @classmethod
+    def chain_iredirect_command(cls, command: list, pipeline: list, **kwargs):
+        raise NotImplementedError
+    
     @classmethod
     def chain_pipe_command(cls, command: list, pipeline: list, start_index: int = 0, **kwargs):
         first_idx, _ = pipeline.pop(0)
@@ -156,6 +180,7 @@ class Pipers:
 
 
 class Pipeline:
+    """Parses and transformers command chainings by generating pipers"""
     __slots__ = ['command', 'pipeline']
 
     def __init__(self, command: list):

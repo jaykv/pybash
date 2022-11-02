@@ -1,7 +1,12 @@
 # PyBash
 
-Streamline bash-command execution from python with an easy-to-use syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Behind the scenes, any line starting with `>` is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
+Streamline bash-command execution from python with an easy-to-use syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Under the hood, any line or variable assignment starting with `>` or surrounded by parentheses is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
 
+For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `>>` instead of a single `>` before the command. While running commands as shell is super convenient, it can also spawn a web of troubles if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
+
+
+# Installation
+`pip install pybash`
 
 # Examples
 
@@ -71,5 +76,8 @@ cp_test()
 ```
 
 # Usage
-1. `pip install pybash`
-2. `python run.py` OR directly, `python -m ideas demo -a pybash`
+#### Demo
+`python run.py`
+
+#### Debugging
+`python -m ideas demo -a pybash -s` to view the transformed source code
