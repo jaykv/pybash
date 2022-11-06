@@ -1,5 +1,7 @@
 # PYBASH DEMO #
 def run():
+    >sort < test.txt >> test_bleh.txt
+    
     # 1. use inside methods
     def cp_test():
         >cp test.txt test_copy.txt

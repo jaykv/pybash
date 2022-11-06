@@ -67,6 +67,30 @@ def test_pipe_chained_redirect():
     )
 
 
+def test_input_redirect():
+    assert run_bash(">sort < test.txt") == 'fout = open("test.txt", "r"); cmd1 = subprocess.run(["sort"], stdin=fout)\n'
+    assert (
+        run_bash(">sort < test.txt | sed 's/SORT/WHAT/g'")
+        == 'fout = open("test.txt", "r"); cmd1 = subprocess.Popen(["sort"], stdin=fout, stdout=subprocess.PIPE);cmd2 = subprocess.run(["sed","s/SORT/WHAT/g"], stdin=cmd1.stdout)\n'
+    )
+    assert (
+        run_bash(">sort < test.txt | sed 's/SORT/WHAT/g' | sed 's/WHAT/WHY/g'")
+        == 'fout = open("test.txt", "r"); cmd1 = subprocess.Popen(["sort"], stdin=fout, stdout=subprocess.PIPE);cmd1 = subprocess.Popen(["sed","s/SORT/WHAT/g"], stdout=subprocess.PIPE, stdin=cmd1.stdout); cmd2 = subprocess.run(["sed","s/WHAT/WHY/g"], stdin=cmd1.stdout)\n'
+    )
+    assert (
+        run_bash(">sort < test.txt | sed 's/SORT/WHAT/g' | sed 's/WHAT/WHY/g' > iredirect_end.txt")
+        == 'fout = open("test.txt", "r"); cmd1 = subprocess.Popen(["sort"], stdin=fout, stdout=subprocess.PIPE);cmd1 = subprocess.Popen(["sed","s/SORT/WHAT/g"], stdout=subprocess.PIPE, stdin=cmd1.stdout);fout = open("iredirect_end.txt", "wb"); cmd1 = subprocess.run(["sed","s/WHAT/WHY/g"], stdout=fout, stdin=cmd1.stdout)\n'
+    )
+    assert (
+        run_bash(">sort < test.txt > test_wb_redirect.txt")
+        == 'fout = open("test.txt", "r"); cmd1 = subprocess.Popen(["sort"], stdin=fout, stdout=subprocess.PIPE);fout = open("test_wb_redirect.txt", "wb"); fout.write(cmd1.stdout.read());\n'
+    )
+    assert (
+        run_bash(">sort < test.txt >> test_ab_redirect.txt")
+        == 'fout = open("test.txt", "r"); cmd1 = subprocess.Popen(["sort"], stdin=fout, stdout=subprocess.PIPE);fout = open("test_ab_redirect.txt", "ab"); fout.write(cmd1.stdout.read());\n'
+    )
+
+
 def test_no_parse():
     assert run_bash('if 5 > 4:') == 'if 5 > 4:'
     assert run_bash('if (pred1 and pred2) > 0:') == 'if (pred1 and pred2) > 0:'

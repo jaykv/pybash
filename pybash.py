@@ -94,30 +94,79 @@ class Pipers:
         return None
 
     @classmethod
-    def chain_iredirect_command(cls, command: list, pipeline: list, **kwargs):
-        raise NotImplementedError
+    def chain_iredirect_command(
+        cls, command: list, pipeline: list, start_index: int = 0, fmode: str = "r", fvar: str = "fout", **kwargs
+    ):
+        first_idx, _ = pipeline.pop(0)
+        pre_command = command[start_index:first_idx]
+        filename = command[first_idx + 1 : first_idx + 2][0]
+
+        fout = f'open("{filename}", "{fmode}")'
+
+        if len(pipeline) == 0:
+            # out to file
+            cmd1 = build_subprocess_list_cmd("run", pre_command, stdin=fvar, **kwargs)
+            return f"{fvar} = {fout}; cmd1 = {cmd1}"
+
+        cmd1 = build_subprocess_list_cmd("Popen", pre_command, stdin=fvar, stdout="subprocess.PIPE", **kwargs)
+
+        out = f"{fvar} = {fout}; cmd1 = {cmd1};"
+        while len(pipeline) > 0:
+            idx, piper = pipeline[0]
+            fvar = f"fout{idx}"
+            if piper == '>':
+                # >sort < test.txt > test2.txt
+                cmd = cls.write_to_file(
+                    command, pipeline, reader='cmd1.stdout.read()', start_index=first_idx + 1, fmode="wb"
+                )
+            elif piper == '>>':
+                # >sort < test.txt >> test2.txt
+                cmd = cls.write_to_file(
+                    command, pipeline, reader='cmd1.stdout.read()', start_index=first_idx + 1, fmode="ab"
+                )
+            elif piper == '|':
+                # >sort < test.txt | grep "HELLO"
+                cmd = cls.get_piper(piper)(
+                    command, pipeline, start_index=first_idx + 1, stdin="cmd1.stdout", chained=True
+                )
+            out += cmd
+            first_idx = idx
+
+        return out
+
+    @classmethod
+    def write_to_file(
+        cls, command: list, pipeline: list, reader: str, start_index: int = 0, fvar: str = 'fout', fmode: str = 'wb'
+    ):
+        first_idx, _ = pipeline.pop(0)
+        filename = command[first_idx + 1 : first_idx + 2][0]
+        cmd = f'{fvar} = open("{filename}", "{fmode}"); {fvar}.write({reader});'
+        return cmd
 
     @classmethod
     def chain_and_command(cls, command: list, pipeline: list, **kwargs):
         raise NotImplementedError
 
     @classmethod
-    def chain_iredirect_command(cls, command: list, pipeline: list, **kwargs):
-        raise NotImplementedError
-
-    @classmethod
-    def chain_pipe_command(cls, command: list, pipeline: list, start_index: int = 0, **kwargs):
+    def chain_pipe_command(cls, command: list, pipeline: list, start_index: int = 0, chained: bool = False, **kwargs):
         first_idx, _ = pipeline.pop(0)
         pre_command = command[start_index:first_idx]
-        cmd1 = build_subprocess_list_cmd('Popen', pre_command, stdout='subprocess.PIPE', **kwargs)
+
+        if not chained:
+            cmd1 = build_subprocess_list_cmd('Popen', pre_command, stdout='subprocess.PIPE', **kwargs)
 
         if len(pipeline) == 0:
             ## No other pipes
             post_command = command[first_idx + 1 :]
-            cmd2 = build_subprocess_list_cmd('run', post_command, stdin='cmd1.stdout')
-            return f"cmd1 = {cmd1}; cmd2 = {cmd2}"
 
-        out = f"cmd1 = {cmd1};"
+            cmd2 = build_subprocess_list_cmd('run', post_command, stdin='cmd1.stdout')
+
+            if not chained:
+                return f"cmd1 = {cmd1}; cmd2 = {cmd2}"
+            else:
+                return f"cmd2 = {cmd2}"
+
+        out = f"cmd1 = {cmd1};" if not chained else ""
         while len(pipeline) > 0:
             idx, piper = pipeline[0]
             cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx + 1, stdin="cmd1.stdout")
@@ -185,7 +234,7 @@ class Pipeline:
 
     def __init__(self, command: list):
         self.command = command
-        self.pipeline = [(i, arg) for i, arg in enumerate(self.command) if arg in Pipers.PIPES]
+        self.pipeline = [(i, arg) for i, arg in enumerate(self.command) if arg in Pipers.OPS]
 
     def parse_command(self):
         if not self.pipeline:
