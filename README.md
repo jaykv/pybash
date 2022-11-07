@@ -75,6 +75,15 @@ def cp_test():
 cp_test()
 ```
 
+### Input redirection
+```python
+>sort < test.txt >> sorted_test.txt
+```
+
+```python
+>sort < test.txt | sed 's/SORT/TEST\\n/g'
+```
+
 # Usage
 #### Demo
 `python run.py`

@@ -1,7 +1,5 @@
 # PYBASH DEMO #
 def run():
-    >sort < test.txt >> test_bleh.txt
-    
     # 1. use inside methods
     def cp_test():
         >cp test.txt test_copy.txt
@@ -32,5 +30,9 @@ def run():
     # 8. chained redirection
     >cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test1.txt >> test2.txt > test3.txt
 
+    # 9. input redirection
+    >sort < test.txt >> sorted_test.txt
+    >sort < test.txt | sed 's/SORT/TEST\\n/g'
+    
     # TODO:
     # a = >echo "hello" >> test.txt
