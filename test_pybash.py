@@ -90,6 +90,8 @@ def test_input_redirect():
         == 'fout = open("test.txt", "r"); cmd1 = subprocess.Popen(["sort"], stdin=fout, stdout=subprocess.PIPE);fout = open("test_ab_redirect.txt", "ab"); fout.write(cmd1.stdout.read());\n'
     )
 
+def test_shell_commands():
+    assert run_bash("$ls .github/*") == 'subprocess.run("ls .github/*", shell=True)\n'
 
 def test_no_parse():
     assert run_bash('if 5 > 4:') == 'if 5 > 4:'
