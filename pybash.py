@@ -31,8 +31,14 @@ def transform_source(source, **_kwargs):
             parsed_line = shlex.split(token.line)
             start_index = get_start_index(parsed_line)
             command = get_bash_command(parsed_line, start_index=start_index)
-            token.string = ' '.join(parsed_line[:start_index])
-            token.string += build_subprocess_list_cmd("check_output", command) + '\n'
+            pipeline_command = Pipeline(command).parse_command(variablized=True)
+            if pipeline_command != command:
+                token.string = pipeline_command
+                token.string += ';' if pipeline_command[-1] != ';' else ''
+                token.string += ' '.join(parsed_line[:start_index]) + ' cmd1\n'
+            else:
+                token.string = ' '.join(parsed_line[:start_index])
+                token.string += build_subprocess_list_cmd("check_output", command) + '\n'
             new_tokens.append(token)
         elif '(>' in token.line:
             # wrapped--
@@ -236,12 +242,12 @@ class Pipeline:
         self.command = command
         self.pipeline = [(i, arg) for i, arg in enumerate(self.command) if arg in Pipers.OPS]
 
-    def parse_command(self):
+    def parse_command(self, variablized: bool=False, **kwargs):
         if not self.pipeline:
             return self.command
 
         _, first_piper = self.pipeline[0]
-        return Pipers.get_piper(first_piper)(self.command, self.pipeline)
+        return Pipers.get_piper(first_piper)(self.command, self.pipeline, **kwargs)
 
 
 def get_start_index(parsed_line: list) -> int:

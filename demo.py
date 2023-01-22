@@ -1,12 +1,17 @@
 # PYBASH DEMO #
 def run():
+    a = >sort < test.txt | grep "HELLO"
+    print(f"test: {a}")
+    
     # 1. use inside methods
     def cp_test():
+        print("1. >cp test.txt test_copy.txt")
         >cp test.txt test_copy.txt
 
     cp_test()
 
     # 2. simple bash command execution with output
+    print("2. >python --version\n   >echo \\nthis is an echo")
     >python --version
     >echo \\nthis is an echo
 

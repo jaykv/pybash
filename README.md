@@ -4,13 +4,20 @@ Streamline bash-command execution from python with an easy-to-use syntax. It com
 
 For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `>>` instead of a single `>` before the command. While running commands as shell is super convenient, it can also spawn a web of troubles if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
 
+Note: this is a mainly experimental library. Consider and test before using in prod.
 
 # Installation
 `pip install pybash`
 
-# Examples
+# Setup hook
+```python
+import pybash
+pybash.add_hook()
+```
 
-### Simple execution with output
+# Usage
+
+### 1. Simple execution with output
 ```python
 >python --version
 >echo \\nthis is an echo
@@ -22,7 +29,7 @@ Python 3.9.15
 this is an echo
 ```
 
-### Set output to variable and parse
+### 2. Set output to variable and parse
 ```python
 out = >cat test.txt
 test_data = out.decode('utf-8').strip()
@@ -33,7 +40,7 @@ outputs:
 HOWDY WORLD
 ```
 
-### Wrapped, in-line execution and parsing
+### 3. Wrapped, in-line execution and parsing
 ```python
 print((>cat test.txt).decode('utf-8').strip())
 ```
@@ -42,12 +49,12 @@ outputs:
 HELLO WORLD
 ```
 
-### Redirection
+### 4. Redirection
 ```python
 >echo "hello" >> test4.txt
 ```
 
-### Pipe chaining
+### 5. Pipe chaining
 ```python
 >cat test.txt | sed 's/HELLO/HOWDY/g' | sed 's/HOW/WHY/g' | sed 's/WHY/WHEN/g'
 ```
@@ -56,14 +63,23 @@ outputs:
 WHENDY WORLD
 ```
 
-### Redirection chaining
+### 6. Redirection chaining
 ```python
 >cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test1.txt >> test2.txt > test3.txt
 ```
 
-### Chaining pipes and redirection- works in tandem!
+### 7. Chaining pipes and redirection- works in tandem!
 ```python
 >cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test5.txt
+```
+
+### 8. Input redirection
+```python
+>sort < test.txt >> sorted_test.txt
+```
+
+```python
+>sort < test.txt | sed 's/SORT/TEST\\n/g'
 ```
 
 #### Also works inside methods!
@@ -75,16 +91,8 @@ def cp_test():
 cp_test()
 ```
 
-### Input redirection
-```python
->sort < test.txt >> sorted_test.txt
-```
+# Dev
 
-```python
->sort < test.txt | sed 's/SORT/TEST\\n/g'
-```
-
-# Usage
 #### Demo
 `python run.py`
 
