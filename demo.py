@@ -1,12 +1,19 @@
 # PYBASH DEMO #
 def run():
+    #TODO:
+    #a = >echo "hello" >> test.txt
+    #a = >sort < test.txt | grep "HELLO"
+    #print(f"test: {a}")
+    
     # 1. use inside methods
     def cp_test():
+        print("1. >cp test.txt test_copy.txt")
         >cp test.txt test_copy.txt
 
     cp_test()
 
     # 2. simple bash command execution with output
+    print("2. >python --version\n   >echo \\nthis is an echo")
     >python --version
     >echo \\nthis is an echo
 
@@ -30,5 +37,9 @@ def run():
     # 8. chained redirection
     >cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test1.txt >> test2.txt > test3.txt
 
-    # TODO:
-    # a = >echo "hello" >> test.txt
+    # 9. input redirection
+    >sort < test.txt >> sorted_test.txt
+    >sort < test.txt | sed 's/SORT/TEST\\n/g'
+    
+    # 10. Glob patterns
+    $ls .github/*
