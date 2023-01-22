@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "PyBash"
-version = "0.1.2"
+version = "0.2.0"
 description = ">execute bash commands from python easily"
 authors = ["Jay"]
 readme = "README.md"

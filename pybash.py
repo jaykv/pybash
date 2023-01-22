@@ -13,7 +13,15 @@ def transform_source(source, **_kwargs):
             new_tokens.extend(line)
             continue
 
-        if token == ">":
+        if token == "$":
+            # shell - supports glob patterns
+            # $ls .github/*
+            parsed_line = shlex.split(token.line)
+            command = get_bash_command(parsed_line, command_char="$")
+            command_str = " ".join(command)
+            token.string = build_subprocess_str_cmd("run", command_str, shell=True) + '\n'
+            new_tokens.append(token)
+        elif token == ">":
             # execed--
             # >ls -la
             parsed_line = shlex.split(token.line)
@@ -242,7 +250,7 @@ class Pipeline:
         self.command = command
         self.pipeline = [(i, arg) for i, arg in enumerate(self.command) if arg in Pipers.OPS]
 
-    def parse_command(self, variablized: bool=False, **kwargs):
+    def parse_command(self, variablized: bool = False, **kwargs):
         if not self.pipeline:
             return self.command
 
@@ -264,7 +272,7 @@ def get_start_index(parsed_line: list) -> int:
             return i
 
 
-def get_bash_command(parsed_line: list, start_index: int = None, wrapped: bool = None) -> list:
+def get_bash_command(parsed_line: list, start_index: int = None, wrapped: bool = None, command_char: str = ">") -> list:
     """Parses line to bash command
 
     Args:
@@ -284,7 +292,7 @@ def get_bash_command(parsed_line: list, start_index: int = None, wrapped: bool =
 
     # > may be at the beginning or somewhere in the middle of this arg
     # examples: >ls, print(>cat => strip up to and including >
-    command[0] = command[0][command[0].index('>') + 1 :].strip()
+    command[0] = command[0][command[0].index(command_char) + 1 :].strip()
 
     # remove everything after and including first )- not part of the command
     if wrapped:
@@ -306,7 +314,7 @@ def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:
     Returns:
         str: subprocess command
     """
-    command = f'subprocess.{method}({arg}'
+    command = f'subprocess.{method}("{arg}"'
     if kwargs:
         for k, v in kwargs.items():
             command += f", {k}={v}"

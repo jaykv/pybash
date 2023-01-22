@@ -2,9 +2,9 @@
 
 Streamline bash-command execution from python with an easy-to-use syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Under the hood, any line or variable assignment starting with `>` or surrounded by parentheses is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
 
-For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `>>` instead of a single `>` before the command. While running commands as shell is super convenient, it can also spawn a web of troubles if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
+For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `$` instead of a single `>` before the command. While running commands as shell can be convenient, it can also spawn security risks and  if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
 
-Note: this is a mainly experimental library. Consider and test before using in prod.
+Note: this is a mainly experimental library. Consider the risks and test before using in prod.
 
 # Installation
 `pip install pybash`
@@ -80,6 +80,10 @@ WHENDY WORLD
 
 ```python
 >sort < test.txt | sed 's/SORT/TEST\\n/g'
+```
+### 9. Glob patterns with shell
+```python
+$ls .github/*
 ```
 
 #### Also works inside methods!

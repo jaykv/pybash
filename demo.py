@@ -1,7 +1,9 @@
 # PYBASH DEMO #
 def run():
-    a = >sort < test.txt | grep "HELLO"
-    print(f"test: {a}")
+    #TODO:
+    #a = >echo "hello" >> test.txt
+    #a = >sort < test.txt | grep "HELLO"
+    #print(f"test: {a}")
     
     # 1. use inside methods
     def cp_test():
@@ -39,5 +41,5 @@ def run():
     >sort < test.txt >> sorted_test.txt
     >sort < test.txt | sed 's/SORT/TEST\\n/g'
     
-    # TODO:
-    # a = >echo "hello" >> test.txt
+    # 10. Glob patterns
+    $ls .github/*
