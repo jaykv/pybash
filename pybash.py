@@ -4,83 +4,120 @@ import token_utils
 from ideas import import_hook
 
 
-def transform_source(source, **_kwargs):
-    """Convert >bash commands to subprocess calls"""
-    new_tokens = []
-    for line in token_utils.get_lines(source):
-        token = token_utils.get_first(line)
-        if not token:
-            new_tokens.extend(line)
-            continue
+class Processor:
+    command_char = ">"
 
-        if token == "$":
-            # shell - supports glob patterns
-            # $ls .github/*
-            parsed_line = shlex.split(token.line)
-            command = get_bash_command(parsed_line, command_char="$")
-            command_str = " ".join(command)
-            token.string = build_subprocess_str_cmd("run", command_str, shell=True) + '\n'
-            new_tokens.append(token)
-        elif token == ">":
-            # execed--
-            # >ls -la
-            parsed_line = shlex.split(token.line)
-            command = get_bash_command(parsed_line)
-            pipeline_command = Pipeline(command).parse_command()
-            if pipeline_command != command:
-                token.string = pipeline_command + '\n'
-            else:
-                # no pipers
-                token.string = build_subprocess_list_cmd("run", command) + '\n'
-            new_tokens.append(token)
-        elif '= >' in token.line:
-            # variabilized--
-            # a = >cat test.txt
-            parsed_line = shlex.split(token.line)
-            start_index = get_start_index(parsed_line)
-            command = get_bash_command(parsed_line, start_index=start_index)
-            pipeline_command = Pipeline(command).parse_command(variablized=True)
-            if pipeline_command != command:
-                token.string = pipeline_command
-                token.string += ';' if pipeline_command[-1] != ';' else ''
-                token.string += ' '.join(parsed_line[:start_index]) + ' cmd1\n'
-            else:
-                token.string = ' '.join(parsed_line[:start_index])
-                token.string += build_subprocess_list_cmd("check_output", command) + '\n'
-            new_tokens.append(token)
-        elif '(>' in token.line:
-            # wrapped--
-            # print(>cat test.txt)
-            parsed_line = shlex.split(token.line)
-            raw_line = [tok for tok in token.line.split(' ') if tok]
-            start_index = get_start_index(parsed_line)
-            command = get_bash_command(parsed_line, start_index=start_index, wrapped=True)
+    def __init__(self, token: str) -> None:
+        self.token = token
+        self.token_line = token.line
+        self.parse()
 
-            # shlex strips out single quotes and double quotes-- use raw_line for the code around the wrapped command
-            token.string = ' '.join(raw_line[:start_index]) + raw_line[start_index][: raw_line[start_index].index('>')]
-            token.string += (
-                build_subprocess_list_cmd("check_output", command) + raw_line[-1][raw_line[-1].index(')') :] + '\n'
-            )
-            new_tokens.append(token)
+    def parse(self):
+        self.parsed_line = shlex.split(self.token_line)
+        self.command = Commander.get_bash_command(self.parsed_line, command_char=self.command_char)
+
+    def transform(self) -> token_utils.Token:
+        raise NotImplementedError
+
+
+class Shelled(Processor):
+    # $ls .github/*
+    command_char = "$"
+
+    def transform(self) -> token_utils.Token:
+        command_str = " ".join(self.command)
+        self.token.string = Commander.build_subprocess_str_cmd("run", command_str, shell=True) + '\n'
+        return self.token
+
+
+class Execed(Processor):
+    # >ls -la
+
+    def transform(self) -> token_utils.Token:
+        pipeline_command = Pipeline(self.command).parse_command()
+        if pipeline_command != self.command:
+            self.token.string = pipeline_command + '\n'
         else:
+            # no pipers
+            self.token.string = Commander.build_subprocess_list_cmd("run", self.command) + '\n'
+        return self.token
+
+
+class Variablized(Processor):
+    # a = >cat test.txt
+    def parse(self):
+        self.parsed_line = shlex.split(self.token.line)
+        self.start_index = Commander.get_start_index(self.parsed_line)
+        self.command = Commander.get_bash_command(self.parsed_line, start_index=self.start_index)
+
+    def transform(self):
+        pipeline_command = Pipeline(self.command).parse_command(variablized=True)
+        if pipeline_command != self.command:
+            self.token.string = pipeline_command
+            self.token.string += ';' if pipeline_command[-1] != ';' else ''
+            self.token.string += ' '.join(self.parsed_line[: self.start_index]) + ' cmd1\n'
+        else:
+            self.token.string = ' '.join(self.parsed_line[: self.start_index])
+            self.token.string += Commander.build_subprocess_list_cmd("check_output", self.command) + '\n'
+
+        return self.token
+
+
+class Wrapped(Processor):
+    # print(>cat test.txt)
+    def parse(self):
+        self.parsed_line = shlex.split(self.token.line)
+        self.raw_line = [tok for tok in self.token.line.split(' ') if tok]
+        self.start_index = Commander.get_start_index(self.parsed_line)
+        self.command = Commander.get_bash_command(self.parsed_line, start_index=self.start_index, wrapped=True)
+
+    def transform(self):
+        # shlex strips out single quotes and double quotes-- use raw_line for the code around the wrapped command
+        self.token.string = (
+            ' '.join(self.raw_line[: self.start_index])
+            + self.raw_line[self.start_index][: self.raw_line[self.start_index].index('>')]
+        )
+        self.token.string += (
+            Commander.build_subprocess_list_cmd("check_output", self.command)
+            + self.raw_line[-1][self.raw_line[-1].index(')') :]
+            + '\n'
+        )
+
+        return self.token
+
+
+class Transformer:
+    tokenizers = {"$": Shelled, ">": Execed}
+    greedy_tokenizers = {"= >": Variablized, "(>": Wrapped}
+
+    @classmethod
+    def transform_source(cls, source, **_kwargs):
+        """Convert >bash commands to subprocess calls"""
+        new_tokens = []
+        for line in token_utils.get_lines(source):
+            token = token_utils.get_first(line)
+            if not token:
+                new_tokens.extend(line)
+                continue
+
+            # matches exact token
+            token_match = [tokenizer for match, tokenizer in cls.tokenizers.items() if token == match]
+            if token_match:
+                token = token_match[0](token).transform()
+                new_tokens.append(token)
+                continue
+
+            # matches anywhere in line
+            greedy_match = [tokenizer for match, tokenizer in cls.greedy_tokenizers.items() if match in token.line]
+            if greedy_match:
+                token = greedy_match[0](token).transform()
+                new_tokens.append(token)
+                continue
+
+            # no match
             new_tokens.extend(line)
 
-    return token_utils.untokenize(new_tokens)
-
-
-def source_init():
-    """Adds subprocess import"""
-    import_subprocess = "import subprocess"
-    return import_subprocess
-
-
-def add_hook(**_kwargs):
-    """Creates and automatically adds the import hook in sys.meta_path"""
-    hook = import_hook.create_hook(hook_name=__name__, transform_source=transform_source, source_init=source_init)
-    return hook
-
-
-## UTILS ##
+        return token_utils.untokenize(new_tokens)
 
 
 class Pipers:
@@ -119,10 +156,10 @@ class Pipers:
 
         if len(pipeline) == 0:
             # out to file
-            cmd1 = build_subprocess_list_cmd("run", pre_command, stdin=fvar, **kwargs)
+            cmd1 = Commander.build_subprocess_list_cmd("run", pre_command, stdin=fvar, **kwargs)
             return f"{fvar} = {fout}; cmd1 = {cmd1}"
 
-        cmd1 = build_subprocess_list_cmd("Popen", pre_command, stdin=fvar, stdout="subprocess.PIPE", **kwargs)
+        cmd1 = Commander.build_subprocess_list_cmd("Popen", pre_command, stdin=fvar, stdout="subprocess.PIPE", **kwargs)
 
         out = f"{fvar} = {fout}; cmd1 = {cmd1};"
         while len(pipeline) > 0:
@@ -167,13 +204,13 @@ class Pipers:
         pre_command = command[start_index:first_idx]
 
         if not chained:
-            cmd1 = build_subprocess_list_cmd('Popen', pre_command, stdout='subprocess.PIPE', **kwargs)
+            cmd1 = Commander.build_subprocess_list_cmd('Popen', pre_command, stdout='subprocess.PIPE', **kwargs)
 
         if len(pipeline) == 0:
             ## No other pipes
             post_command = command[first_idx + 1 :]
 
-            cmd2 = build_subprocess_list_cmd('run', post_command, stdin='cmd1.stdout')
+            cmd2 = Commander.build_subprocess_list_cmd('run', post_command, stdin='cmd1.stdout')
 
             if not chained:
                 return f"cmd1 = {cmd1}; cmd2 = {cmd2}"
@@ -210,7 +247,7 @@ class Pipers:
 
         # out to file
         fout = f'open("{filename}", "{fmode}")'
-        cmd1 = build_subprocess_list_cmd("run", pre_command, stdout=fvar, **kwargs)
+        cmd1 = Commander.build_subprocess_list_cmd("run", pre_command, stdout=fvar, **kwargs)
 
         if len(pipeline) == 0:
             return f"{fvar} = {fout}; cmd1 = {cmd1}"
@@ -258,87 +295,107 @@ class Pipeline:
         return Pipers.get_piper(first_piper)(self.command, self.pipeline, **kwargs)
 
 
-def get_start_index(parsed_line: list) -> int:
-    """Get the start index of first matching >
+class Commander:
+    """Methods related to building and parsing commands"""
 
-    Args:
-        parsed_line (list): line to parse
+    @staticmethod
+    def get_start_index(parsed_line: list) -> int:
+        """Get the start index of first matching >
 
-    Returns:
-        int: starting index
-    """
-    for i, val in enumerate(parsed_line):
-        if '>' in val:
-            return i
+        Args:
+            parsed_line (list): line to parse
+
+        Returns:
+            int: starting index
+        """
+        for i, val in enumerate(parsed_line):
+            if '>' in val:
+                return i
+
+    @staticmethod
+    def get_bash_command(
+        parsed_line: list, start_index: int = None, wrapped: bool = None, command_char: str = ">"
+    ) -> list:
+        """Parses line to bash command
+
+        Args:
+            parsed_line (list): line to parse
+            start_index (int, optional): index to start parsing command from. Defaults to None.
+            wrapped (bool, optional): input is surrounded by parentheses
+
+        Returns:
+            list: parsed command list
+        """
+        # find which arg index the > is at
+        if not start_index:
+            start_index = Commander.get_start_index(parsed_line)
+
+        # strip everything before that index-- not part of the command
+        command = parsed_line[start_index:]
+
+        # > may be at the beginning or somewhere in the middle of this arg
+        # examples: >ls, print(>cat => strip up to and including >
+        command[0] = command[0][command[0].index(command_char) + 1 :].strip()
+
+        # remove everything after and including first )- not part of the command
+        if wrapped:
+            if ')' not in command[-1]:
+                raise SyntaxError("Missing end parentheses")
+
+            command[-1] = command[-1][: command[-1].index(')')]
+
+        return command
+
+    @staticmethod
+    def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:
+        """Builds subprocess command with string arg
+
+        Args:
+            method (str): subprocess method name
+            arg (str): string arg
+
+        Returns:
+            str: subprocess command
+        """
+        command = f'subprocess.{method}("{arg}"'
+        if kwargs:
+            for k, v in kwargs.items():
+                command += f", {k}={v}"
+        command += ")"
+        return command
+
+    @staticmethod
+    def build_subprocess_list_cmd(method: str, args: list, **kwargs) -> str:
+        """Builds subprocess command with list args
+
+        Args:
+            method (str): subprocess method name
+            args (list): list of args
+
+        Returns:
+            str: subprocess command
+        """
+        command = f'subprocess.{method}(['
+        for arg in args:
+            command += '\"' + arg + '\",'
+        command = command[:-1]
+        command += ']'
+        if kwargs:
+            for k, v in kwargs.items():
+                command += f", {k}={v}"
+        command += ")"
+        return command
 
 
-def get_bash_command(parsed_line: list, start_index: int = None, wrapped: bool = None, command_char: str = ">") -> list:
-    """Parses line to bash command
-
-    Args:
-        parsed_line (list): line to parse
-        start_index (int, optional): index to start parsing command from. Defaults to None.
-        wrapped (bool, optional): input is surrounded by parentheses
-
-    Returns:
-        list: parsed command list
-    """
-    # find which arg index the > is at
-    if not start_index:
-        start_index = get_start_index(parsed_line)
-
-    # strip everything before that index-- not part of the command
-    command = parsed_line[start_index:]
-
-    # > may be at the beginning or somewhere in the middle of this arg
-    # examples: >ls, print(>cat => strip up to and including >
-    command[0] = command[0][command[0].index(command_char) + 1 :].strip()
-
-    # remove everything after and including first )- not part of the command
-    if wrapped:
-        if ')' not in command[-1]:
-            raise SyntaxError("Missing end parentheses")
-
-        command[-1] = command[-1][: command[-1].index(')')]
-
-    return command
+def source_init():
+    """Adds subprocess import"""
+    import_subprocess = "import subprocess"
+    return import_subprocess
 
 
-def build_subprocess_str_cmd(method: str, arg: str, **kwargs) -> str:
-    """Builds subprocess command with string arg
-
-    Args:
-        method (str): subprocess method name
-        arg (str): string arg
-
-    Returns:
-        str: subprocess command
-    """
-    command = f'subprocess.{method}("{arg}"'
-    if kwargs:
-        for k, v in kwargs.items():
-            command += f", {k}={v}"
-    command += ")"
-    return command
-
-
-def build_subprocess_list_cmd(method: str, args: list, **kwargs) -> str:
-    """Builds subprocess command with list args
-
-    Args:
-        method (str): subprocess method name
-        args (list): list of args
-
-    Returns:
-        str: subprocess command
-    """
-    command = f'subprocess.{method}(['
-    for arg in args:
-        command += '\"' + arg + '\",'
-    command = command[:-1]
-    command += ']'
-    if kwargs:
-        for k, v in kwargs.items():
-            command += f", {k}={v}"
-    command += ")"
-    return command
+def add_hook(**_kwargs):
+    """Creates and automatically adds the import hook in sys.meta_path"""
+    hook = import_hook.create_hook(
+        hook_name=__name__, transform_source=Transformer.transform_source, source_init=source_init
+    )
+    return hook

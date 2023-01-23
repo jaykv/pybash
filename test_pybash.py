@@ -1,6 +1,6 @@
 import pybash
 
-run_bash = pybash.transform_source
+run_bash = pybash.Transformer.transform_source
 
 
 def test_single_exec():
