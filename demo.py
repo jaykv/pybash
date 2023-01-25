@@ -1,5 +1,11 @@
 # PYBASH DEMO #
 def run():
+    # command interpolation
+    git_command = "status"
+    option = "-v"
+    
+    >git {{git_command}} {{option}}
+    
     #TODO:
     #a = >echo "hello" >> test.txt
     #a = >sort < test.txt | grep "HELLO"

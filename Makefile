@@ -8,6 +8,12 @@ install:
 test:
 	pytest test_pybash.py -vv -rs
 
+dev:
+	python run.py
+
+debug:
+	python -m ideas demo -a pybash -s
+
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache
 	find . -name '*.pyc' -type f -exec rm -rf {} +
@@ -29,5 +35,8 @@ lint:
 	black --check --diff ${SOURCE_FILES}
 	flake8 $(SOURCE_FILES) --count --show-source --statistics
 	flake8 $(SOURCE_FILES) --count --exit-zero --statistics
+
+shell:
+	source $(poetry env info --path)/bin/activate
 
 .PHONY: test clean
