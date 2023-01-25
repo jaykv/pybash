@@ -86,6 +86,30 @@ WHENDY WORLD
 $ls .github/*
 ```
 
+### 10. Interpolation
+Denoted by {{variable_or_function_call_here}}. Only static interpolation is supported currently so no quotes, spaces or expressions within the {{}} or in the string being injected.
+
+```python
+# GOOD
+command = "status"
+def get_option(command):
+    return "-s" if command == "status" else "-v"
+>git {{command}} {{get_option(command)}}
+
+display_type = "labels"
+>k get pods --show-{{display_type}}=true
+
+# BAD
+option = "-s -v"
+>git status {{option}}
+
+options = ['-s', '-v']
+>git status {{" ".join(options)}}
+
+options = {'version': '-v'}
+>git status {{options['version']}}
+```
+
 #### Also works inside methods!
 ```python
 # PYBASH DEMO #

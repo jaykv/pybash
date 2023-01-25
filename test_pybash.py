@@ -1,3 +1,5 @@
+import pytest
+
 import pybash
 
 run_bash = pybash.Transformer.transform_source
@@ -93,6 +95,25 @@ def test_input_redirect():
 
 def test_shell_commands():
     assert run_bash("$ls .github/*") == 'subprocess.run("ls .github/*", shell=True)\n'
+
+
+def test_interpolate():
+    assert run_bash(">git {{command}} {{option}}") == 'subprocess.run(["git","" + command + "","" + option + ""])\n'
+    assert (
+        run_bash(">git {{command}} {{process(option)}}")
+        == 'subprocess.run(["git","" + command + "","" + process(option) + ""])\n'
+    )
+    assert (
+        run_bash(">k get pods --show-{{display_type}}=true")
+        == 'subprocess.run(["k","get","pods","--show-" + display_type + "=true"])\n'
+    )
+
+
+def test_invalid_interpolate():
+    with pytest.raises(pybash.InvalidInterpolation):
+        assert run_bash(">git {{command}} {{ option }}")
+        assert run_bash(">git {{command}} {{'\"'.join(option)}}")
+        assert run_bash(">git {{command}} {{a['key']}}")
 
 
 def test_no_parse():

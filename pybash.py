@@ -1,7 +1,28 @@
+import re
 import shlex
 
 import token_utils
 from ideas import import_hook
+
+
+@staticmethod
+def source_init():
+    """Adds subprocess import"""
+    import_subprocess = "import subprocess"
+    return import_subprocess
+
+
+@staticmethod
+def add_hook(**_kwargs):
+    """Creates and automatically adds the import hook in sys.meta_path"""
+    hook = import_hook.create_hook(
+        hook_name=__name__, transform_source=Transformer.transform_source, source_init=source_init
+    )
+    return hook
+
+
+class InvalidInterpolation(Exception):
+    pass
 
 
 class Processor:
@@ -19,6 +40,26 @@ class Processor:
     def transform(self) -> token_utils.Token:
         raise NotImplementedError
 
+    @staticmethod
+    def interpolate(string: str) -> str:
+        """Process {{ interpolations }} and substitute.
+            Interpolations are denotated by a {{ }} with a variable or a function call inside.
+
+        Args:
+            string (str): String to interpolate
+
+        Returns:
+            str: Interpolated string
+        """
+
+        # validate interpolation
+        invalid_chars = [' ', '"', "'"]
+        matches = re.findall(r'{{(.+?)}}', string)
+        if matches and any(any(bad_char in match for bad_char in invalid_chars) for match in matches):
+            raise InvalidInterpolation
+
+        return re.sub(r'{{(.+?)}}', r'" + \1 + "', string)
+
 
 class Shelled(Processor):
     # $ls .github/*
@@ -32,7 +73,6 @@ class Shelled(Processor):
 
 class Execed(Processor):
     # >ls -la
-
     def transform(self) -> token_utils.Token:
         pipeline_command = Pipeline(self.command).parse_command()
         if pipeline_command != self.command:
@@ -90,8 +130,8 @@ class Transformer:
     tokenizers = {"$": Shelled, ">": Execed}
     greedy_tokenizers = {"= >": Variablized, "(>": Wrapped}
 
-    @classmethod
-    def transform_source(cls, source, **_kwargs):
+    @staticmethod
+    def transform_source(source, **_kwargs):
         """Convert >bash commands to subprocess calls"""
         new_tokens = []
         for line in token_utils.get_lines(source):
@@ -101,16 +141,20 @@ class Transformer:
                 continue
 
             # matches exact token
-            token_match = [tokenizer for match, tokenizer in cls.tokenizers.items() if token == match]
+            token_match = [tokenizer for match, tokenizer in Transformer.tokenizers.items() if token == match]
             if token_match:
                 token = token_match[0](token).transform()
+                token.string = Processor.interpolate(token.string)
                 new_tokens.append(token)
                 continue
 
             # matches anywhere in line
-            greedy_match = [tokenizer for match, tokenizer in cls.greedy_tokenizers.items() if match in token.line]
+            greedy_match = [
+                tokenizer for match, tokenizer in Transformer.greedy_tokenizers.items() if match in token.line
+            ]
             if greedy_match:
                 token = greedy_match[0](token).transform()
+                token.string = Processor.interpolate(token.string)
                 new_tokens.append(token)
                 continue
 
@@ -385,17 +429,3 @@ class Commander:
                 command += f", {k}={v}"
         command += ")"
         return command
-
-
-def source_init():
-    """Adds subprocess import"""
-    import_subprocess = "import subprocess"
-    return import_subprocess
-
-
-def add_hook(**_kwargs):
-    """Creates and automatically adds the import hook in sys.meta_path"""
-    hook = import_hook.create_hook(
-        hook_name=__name__, transform_source=Transformer.transform_source, source_init=source_init
-    )
-    return hook
