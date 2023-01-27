@@ -97,7 +97,7 @@ def test_shell_commands():
     assert run_bash("$ls .github/*") == 'subprocess.run("ls .github/*", shell=True)\n'
 
 
-def test_interpolate():
+def test_static_interpolate():
     assert run_bash(">git {{command}} {{option}}") == 'subprocess.run(["git","" + command + "","" + option + ""])\n'
     assert (
         run_bash(">git {{command}} {{process(option)}}")
@@ -107,6 +107,14 @@ def test_interpolate():
         run_bash(">k get pods --show-{{display_type}}=true")
         == 'subprocess.run(["k","get","pods","--show-" + display_type + "=true"])\n'
     )
+
+
+def test_dynamic_interpolate():
+    assert (
+        run_bash(">kubectl get pods {{{\"--\" + \"-\".join(['show', 'labels'])}}} -n {{{namespace}}}")
+        == 'subprocess.run(["kubectl","get","pods","" + "--" + "-".join([\'show\', \'labels\']) + "","-n","" + namespace + ""])\n'
+    )
+    assert run_bash(">git {{{options['h']}}}") == 'subprocess.run(["git","" + options[\'h\'] + ""])\n'
 
 
 def test_invalid_interpolate():

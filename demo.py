@@ -1,6 +1,13 @@
 # PYBASH DEMO #
 def run():
-    # command interpolation
+    # dynamic interpolation
+    options = {'version': '-v', 'help': '-h'}
+    >git {{{options['h']}}}
+    
+    namespace = "coffee"
+    >kubectl get pods {{{"--" + "-".join(['show', 'labels'])}}} --namespace {{{namespace}}}
+    
+    # static interpolation
     git_command = "status"
     option = "-v"
     

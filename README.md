@@ -86,28 +86,48 @@ WHENDY WORLD
 $ls .github/*
 ```
 
-### 10. Interpolation
-Denoted by {{variable_or_function_call_here}}. Only static interpolation is supported currently so no quotes, spaces or expressions within the {{}} or in the string being injected.
+### 10. Static Interpolation
+Denoted by {{variable_or_function_call_here}}. For static interpolation, no quotes, spaces or expressions within the {{}} or in the string being injected.
 
 ```python
-# GOOD
+## GOOD
 command = "status"
 def get_option(command):
     return "-s" if command == "status" else "-v"
 >git {{command}} {{get_option(command)}}
 
 display_type = "labels"
->k get pods --show-{{display_type}}=true
+>kubectl get pods --show-{{display_type}}=true
 
-# BAD
+## BAD
 option = "-s -v"
 >git status {{option}}
 
 options = ['-s', '-v']
 >git status {{" ".join(options)}}
 
+# use dynamic interpolation
 options = {'version': '-v'}
 >git status {{options['version']}}
+```
+
+### 11. Dynamic interpolation
+Denoted by {{{ any python variable, function call, or expression here }}}. The output of the variable, function call, or the expression must still not include spaces.
+
+```python
+## GOOD
+
+# git -h
+options = {'version': '-v', 'help': '-h'}
+>git {{{options['h']}}}
+
+# kubectl get pods --show-labels -n coffee
+namespace = "coffee"
+>kubectl get pods {{{"--" + "-".join(['show', 'labels'])}}} -n {{{namespace}}}
+
+## BAD
+option = "-s -v"
+>git status {{option}}
 ```
 
 #### Also works inside methods!
