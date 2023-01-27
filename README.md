@@ -2,7 +2,8 @@
 
 ![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/pybash/python-app.yml?branch=main)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pybash)
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jaykv/pybash)
+![PyPI](https://img.shields.io/pypi/v/pybash)
+![GitHub](https://img.shields.io/github/license/jaykv/pybash)
 
 Streamline bash-command execution from python with a new syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Under the hood, any line or variable assignment starting with `>` or surrounded by parentheses is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
 
