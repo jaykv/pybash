@@ -111,8 +111,8 @@ def test_static_interpolate():
 
 def test_dynamic_interpolate():
     assert (
-        run_bash(">kubectl get pods {{{\"--\" + \"-\".join(['show', 'labels'])}}} -n {{{namespace}}}")
-        == 'subprocess.run(["kubectl","get","pods","" + "--" + "-".join([\'show\', \'labels\']) + "","-n","" + namespace + ""])\n'
+        run_bash(">kubectl get pods {{{\"--\" + \"-\".join(['show', 'labels'])}}} -n {{{ namespace  }}}")
+        == 'subprocess.run(["kubectl","get","pods","" + "--" + "-".join([\'show\', \'labels\']) + "","-n","" +  namespace   + ""])\n'
     )
     assert run_bash(">git {{{options['h']}}}") == 'subprocess.run(["git","" + options[\'h\'] + ""])\n'
 
