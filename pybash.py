@@ -5,14 +5,12 @@ import token_utils
 from ideas import import_hook
 
 
-@staticmethod
 def source_init():
     """Adds subprocess import"""
     import_subprocess = "import subprocess"
     return import_subprocess
 
 
-@staticmethod
 def add_hook(**_kwargs):
     """Creates and automatically adds the import hook in sys.meta_path"""
     hook = import_hook.create_hook(
@@ -40,10 +38,39 @@ class Processor:
     def transform(self) -> token_utils.Token:
         raise NotImplementedError
 
+    def interpolate(self) -> str:
+        self.token.string = Processor.dynamic_interpolate(self.token_line, self.token.string)
+        self.token.string = Processor.static_interpolate(self.token.string)
+
     @staticmethod
-    def interpolate(string: str) -> str:
-        """Process {{ interpolations }} and substitute.
-            Interpolations are denotated by a {{ }} with a variable or a function call inside.
+    def dynamic_interpolate(token_string: str, parsed_command: str) -> str:
+        """Process {{{ dynamic interpolations }}} and substitute.
+            Dynamic interpolations are denotated by a {{{ }}} with any expression inside.
+            Substitution in the parsed command string happens relative to the order of the interpolations in the original command string.
+
+        Args:
+            token_string (str): Original command string
+            parsed_command (str): Parsed command string
+
+        Returns:
+            str: Interpolated parsed command string
+        """
+        pattern = r'{{{(.+?)}}}'
+        subs = re.findall(pattern, token_string)
+
+        if not subs:
+            return parsed_command
+
+        for sub in subs:
+            parsed_command = re.sub(pattern, '" + ' + sub + ' + "', parsed_command, 1)
+
+        return parsed_command
+
+    @staticmethod
+    def static_interpolate(string: str) -> str:
+        """Process {{ static interpolations }} and substitute.
+            Static interpolations are denotated by a {{ }} with a variable or a function call inside.
+            Substitution happens directly on the parsed command string. Therefore, certain characters cannot be interpolated as they get parsed out before substitution.
 
         Args:
             string (str): String to interpolate
@@ -100,8 +127,6 @@ class Variablized(Processor):
             self.token.string = ' '.join(self.parsed_line[: self.start_index])
             self.token.string += Commander.build_subprocess_list_cmd("check_output", self.command) + '\n'
 
-        return self.token
-
 
 class Wrapped(Processor):
     # print(>cat test.txt)
@@ -143,9 +168,10 @@ class Transformer:
             # matches exact token
             token_match = [tokenizer for match, tokenizer in Transformer.tokenizers.items() if token == match]
             if token_match:
-                token = token_match[0](token).transform()
-                token.string = Processor.interpolate(token.string)
-                new_tokens.append(token)
+                parser = token_match[0](token)
+                parser.transform()
+                parser.interpolate()
+                new_tokens.append(parser.token)
                 continue
 
             # matches anywhere in line
@@ -153,9 +179,10 @@ class Transformer:
                 tokenizer for match, tokenizer in Transformer.greedy_tokenizers.items() if match in token.line
             ]
             if greedy_match:
-                token = greedy_match[0](token).transform()
-                token.string = Processor.interpolate(token.string)
-                new_tokens.append(token)
+                parser = greedy_match[0](token)
+                parser.transform()
+                parser.interpolate()
+                new_tokens.append(parser.token)
                 continue
 
             # no match
