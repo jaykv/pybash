@@ -1,8 +1,12 @@
 # PyBash
 
+![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/pybash/python-app.yml?branch=main)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/pybash)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jaykv/pybash)
+
 Streamline bash-command execution from python with a new syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Under the hood, any line or variable assignment starting with `>` or surrounded by parentheses is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
 
-For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `$` instead of a single `>` before the command. While running commands as shell can be convenient, it can also spawn security risks and  if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
+For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `$` instead of a single `>` before the command. While running commands as shell can be convenient, it can also spawn security risks if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
 
 Note: this is a mainly experimental library. Consider the risks and test before using in prod.
 
