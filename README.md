@@ -1,6 +1,6 @@
 # PyBash
 
-Streamline bash-command execution from python with an easy-to-use syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Under the hood, any line or variable assignment starting with `>` or surrounded by parentheses is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
+Streamline bash-command execution from python with a new syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Under the hood, any line or variable assignment starting with `>` or surrounded by parentheses is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
 
 For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `$` instead of a single `>` before the command. While running commands as shell can be convenient, it can also spawn security risks and  if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
 
@@ -86,7 +86,7 @@ WHENDY WORLD
 $ls .github/*
 ```
 
-### 10. Static Interpolation
+### 10. Static interpolation
 Denoted by {{variable_or_function_call_here}}. For static interpolation, no quotes, spaces or expressions within the {{}} or in the string being injected.
 
 ```python
@@ -127,7 +127,7 @@ namespace = "coffee"
 
 ## BAD
 option = "-s -v"
->git status {{option}}
+>git status {{{ option }}}
 ```
 
 #### Also works inside methods!
