@@ -91,8 +91,8 @@ WHENDY WORLD
 $ls .github/*
 ```
 
-### 10. Static interpolation
-Denoted by {{variable_or_function_call_here}}. For static interpolation, no quotes, spaces or expressions within the {{}} or in the string being injected.
+### 10. Direct interpolation
+Denoted by {{code here}}. Interpolated as direct code replace. The value/output of the variable, function call, or the expression must not include spaces.
 
 ```python
 ## GOOD
@@ -116,23 +116,23 @@ options = {'version': '-v'}
 >git status {{options['version']}}
 ```
 
-### 11. Dynamic interpolation
-Denoted by {{{ any python variable, function call, or expression here }}}. The output of the variable, function call, or the expression must still not include spaces.
+### 11. f-string interpolation
+Denoted by f{ any python variable, function call, or expression here }. Interpolated as f-string. The output of the variable, function call, or the expression must still not include spaces.
 
 ```python
 ## GOOD
 
 # git -h
 options = {'version': '-v', 'help': '-h'}
->git {{{options['h']}}}
+>git f{options['h']}
 
 # kubectl get pods --show-labels -n coffee
 namespace = "coffee"
->kubectl get pods {{{"--" + "-".join(['show', 'labels'])}}} -n {{{namespace}}}
+>kubectl get pods f{"--" + "-".join(['show', 'labels'])} -n f{namespace}
 
 ## BAD
 option = "-s -v"
->git status {{{ option }}}
+>git status f{option}
 ```
 
 #### Also works inside methods!

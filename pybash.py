@@ -1,5 +1,6 @@
 import re
 import shlex
+from typing import Callable, Union
 
 import token_utils
 from ideas import import_hook
@@ -7,16 +8,16 @@ from ideas import import_hook
 
 def source_init():
     """Adds subprocess import"""
-    import_subprocess = "import subprocess"
-    return import_subprocess
+    return "import subprocess"
 
 
 def add_hook(**_kwargs):
     """Creates and automatically adds the import hook in sys.meta_path"""
-    hook = import_hook.create_hook(
-        hook_name=__name__, transform_source=Transformer.transform_source, source_init=source_init
+    return import_hook.create_hook(
+        hook_name=__name__,
+        transform_source=Transformer.transform_source,
+        source_init=source_init,
     )
-    return hook
 
 
 class InvalidInterpolation(Exception):
@@ -26,26 +27,26 @@ class InvalidInterpolation(Exception):
 class Processor:
     command_char = ">"
 
-    def __init__(self, token: str) -> None:
+    def __init__(self, token: token_utils.Token) -> None:
         self.token = token
         self.token_line = token.line
         self.parse()
 
-    def parse(self):
+    def parse(self) -> None:
         self.parsed_line = shlex.split(self.token_line)
         self.command = Commander.get_bash_command(self.parsed_line, command_char=self.command_char)
 
     def transform(self) -> token_utils.Token:
         raise NotImplementedError
 
-    def interpolate(self) -> str:
-        self.token.string = Processor.dynamic_interpolate(self.token_line, self.token.string)
-        self.token.string = Processor.static_interpolate(self.token.string)
+    def interpolate(self) -> None:
+        self.token.string = Processor.fstring_interpolate(self.token_line, self.token.string)
+        self.token.string = Processor.direct_interpolate(self.token.string)
 
     @staticmethod
-    def dynamic_interpolate(token_string: str, parsed_command: str) -> str:
-        """Process {{{ dynamic interpolations }}} and substitute.
-            Dynamic interpolations are denotated by a {{{ }}} with any expression inside.
+    def fstring_interpolate(token_string: str, parsed_command: str) -> str:
+        """Process f{ dynamic interpolations } and substitute.
+            Dynamic interpolations are denotated by a f{ } with any expression inside.
             Substitution in the parsed command string happens relative to the order of the interpolations in the original command string.
 
         Args:
@@ -55,19 +56,20 @@ class Processor:
         Returns:
             str: Interpolated parsed command string
         """
-        pattern = r'{{{(.+?)}}}'
+        pattern = r'f{(.+?)}'
         subs = re.findall(pattern, token_string)
 
         if not subs:
             return parsed_command
 
+        command_pattern = f'\"{pattern}\"'
         for sub in subs:
-            parsed_command = re.sub(pattern, '" + ' + sub + ' + "', parsed_command, 1)
+            parsed_command = re.sub(command_pattern, 'f\"\"\"{' + sub + '}\"\"\"', parsed_command, 1)
 
         return parsed_command
 
     @staticmethod
-    def static_interpolate(string: str) -> str:
+    def direct_interpolate(string: str) -> str:
         """Process {{ static interpolations }} and substitute.
             Static interpolations are denotated by a {{ }} with a variable or a function call inside.
             Substitution happens directly on the parsed command string. Therefore, certain characters cannot be interpolated as they get parsed out before substitution.
@@ -112,12 +114,12 @@ class Execed(Processor):
 
 class Variablized(Processor):
     # a = >cat test.txt
-    def parse(self):
+    def parse(self) -> None:
         self.parsed_line = shlex.split(self.token.line)
         self.start_index = Commander.get_start_index(self.parsed_line)
         self.command = Commander.get_bash_command(self.parsed_line, start_index=self.start_index)
 
-    def transform(self):
+    def transform(self) -> None:
         pipeline_command = Pipeline(self.command).parse_command(variablized=True)
         if pipeline_command != self.command:
             self.token.string = pipeline_command
@@ -130,13 +132,13 @@ class Variablized(Processor):
 
 class Wrapped(Processor):
     # print(>cat test.txt)
-    def parse(self):
+    def parse(self) -> None:
         self.parsed_line = shlex.split(self.token.line)
         self.raw_line = [tok for tok in self.token.line.split(' ') if tok]
         self.start_index = Commander.get_start_index(self.parsed_line)
         self.command = Commander.get_bash_command(self.parsed_line, start_index=self.start_index, wrapped=True)
 
-    def transform(self):
+    def transform(self) -> token_utils.Token:
         # shlex strips out single quotes and double quotes-- use raw_line for the code around the wrapped command
         self.token.string = (
             ' '.join(self.raw_line[: self.start_index])
@@ -165,20 +167,16 @@ class Transformer:
                 new_tokens.extend(line)
                 continue
 
-            # matches exact token
-            token_match = [tokenizer for match, tokenizer in Transformer.tokenizers.items() if token == match]
-            if token_match:
+            if token_match := [tokenizer for match, tokenizer in Transformer.tokenizers.items() if token == match]:
                 parser = token_match[0](token)
                 parser.transform()
                 parser.interpolate()
                 new_tokens.append(parser.token)
                 continue
 
-            # matches anywhere in line
-            greedy_match = [
+            if greedy_match := [
                 tokenizer for match, tokenizer in Transformer.greedy_tokenizers.items() if match in token.line
-            ]
-            if greedy_match:
+            ]:
                 parser = greedy_match[0](token)
                 parser.transform()
                 parser.interpolate()
@@ -197,7 +195,7 @@ class Pipers:
     OPS = ['|', '>', '>>', '<', '&&']
 
     @classmethod
-    def get_piper(cls, op: str):
+    def get_piper(cls, op: str) -> Callable:
         if op == '|':
             # Pipe output to next command
             return cls.chain_pipe_command
@@ -213,19 +211,20 @@ class Pipers:
         elif op == '&&':
             # Run next command only if previous succeeds
             return cls.chain_and_command
-        return None
+
+        raise NotImplementedError
 
     @classmethod
     def chain_iredirect_command(
         cls, command: list, pipeline: list, start_index: int = 0, fmode: str = "r", fvar: str = "fout", **kwargs
-    ):
+    ) -> str:
         first_idx, _ = pipeline.pop(0)
         pre_command = command[start_index:first_idx]
         filename = command[first_idx + 1 : first_idx + 2][0]
 
         fout = f'open("{filename}", "{fmode}")'
 
-        if len(pipeline) == 0:
+        if not pipeline:
             # out to file
             cmd1 = Commander.build_subprocess_list_cmd("run", pre_command, stdin=fvar, **kwargs)
             return f"{fvar} = {fout}; cmd1 = {cmd1}"
@@ -233,9 +232,10 @@ class Pipers:
         cmd1 = Commander.build_subprocess_list_cmd("Popen", pre_command, stdin=fvar, stdout="subprocess.PIPE", **kwargs)
 
         out = f"{fvar} = {fout}; cmd1 = {cmd1};"
-        while len(pipeline) > 0:
+        while pipeline:
             idx, piper = pipeline[0]
             fvar = f"fout{idx}"
+            cmd = ""
             if piper == '>':
                 # >sort < test.txt > test2.txt
                 cmd = cls.write_to_file(
@@ -259,37 +259,36 @@ class Pipers:
     @classmethod
     def write_to_file(
         cls, command: list, pipeline: list, reader: str, start_index: int = 0, fvar: str = 'fout', fmode: str = 'wb'
-    ):
+    ) -> str:
         first_idx, _ = pipeline.pop(0)
         filename = command[first_idx + 1 : first_idx + 2][0]
-        cmd = f'{fvar} = open("{filename}", "{fmode}"); {fvar}.write({reader});'
-        return cmd
+        return f'{fvar} = open("{filename}", "{fmode}"); {fvar}.write({reader});'
 
     @classmethod
     def chain_and_command(cls, command: list, pipeline: list, **kwargs):
         raise NotImplementedError
 
     @classmethod
-    def chain_pipe_command(cls, command: list, pipeline: list, start_index: int = 0, chained: bool = False, **kwargs):
+    def chain_pipe_command(
+        cls, command: list, pipeline: list, start_index: int = 0, chained: bool = False, **kwargs
+    ) -> str:
         first_idx, _ = pipeline.pop(0)
         pre_command = command[start_index:first_idx]
-
-        if not chained:
-            cmd1 = Commander.build_subprocess_list_cmd('Popen', pre_command, stdout='subprocess.PIPE', **kwargs)
-
-        if len(pipeline) == 0:
+        cmd1 = (
+            ""
+            if chained
+            else Commander.build_subprocess_list_cmd('Popen', pre_command, stdout='subprocess.PIPE', **kwargs)
+        )
+        cmd2 = ""
+        if not pipeline:
             ## No other pipes
             post_command = command[first_idx + 1 :]
 
             cmd2 = Commander.build_subprocess_list_cmd('run', post_command, stdin='cmd1.stdout')
 
-            if not chained:
-                return f"cmd1 = {cmd1}; cmd2 = {cmd2}"
-            else:
-                return f"cmd2 = {cmd2}"
-
-        out = f"cmd1 = {cmd1};" if not chained else ""
-        while len(pipeline) > 0:
+            return f"cmd2 = {cmd2}" if chained else f"cmd1 = {cmd1}; cmd2 = {cmd2}"
+        out = "" if chained else f"cmd1 = {cmd1};"
+        while pipeline:
             idx, piper = pipeline[0]
             cmd = cls.get_piper(piper)(command, pipeline, start_index=first_idx + 1, stdin="cmd1.stdout")
             out += cmd
@@ -307,7 +306,7 @@ class Pipers:
         fmode: str = "wb",
         chained: bool = False,
         **kwargs,
-    ):
+    ) -> str:
         first_idx, _ = pipeline.pop(0)
         pre_command = command[start_index:first_idx]
         filename = command[first_idx + 1 : first_idx + 2][0]
@@ -320,11 +319,11 @@ class Pipers:
         fout = f'open("{filename}", "{fmode}")'
         cmd1 = Commander.build_subprocess_list_cmd("run", pre_command, stdout=fvar, **kwargs)
 
-        if len(pipeline) == 0:
+        if not pipeline:
             return f"{fvar} = {fout}; cmd1 = {cmd1}"
 
         out = f"{fvar} = {fout}; cmd1 = {cmd1};"
-        while len(pipeline) > 0:
+        while pipeline:
             idx, piper = pipeline[0]
             fvar = f"fout{idx}"
             if piper in ['>', '>>']:
@@ -339,13 +338,13 @@ class Pipers:
     @classmethod
     def chain_sredirect_command(
         cls, command: list, pipeline: list, start_index: int = 0, fvar: str = "fout", chained: bool = False, **kwargs
-    ):
+    ) -> str:
         return cls.chain_redirect(command, pipeline, start_index, fmode="wb", fvar=fvar, chained=chained, **kwargs)
 
     @classmethod
     def chain_dredirect_command(
         cls, command: list, pipeline: list, start_index: int = 0, fvar: str = "fout", chained: bool = False, **kwargs
-    ):
+    ) -> str:
         return cls.chain_redirect(command, pipeline, start_index, fmode="ab", fvar=fvar, chained=chained, **kwargs)
 
 
@@ -354,11 +353,11 @@ class Pipeline:
 
     __slots__ = ['command', 'pipeline']
 
-    def __init__(self, command: list):
+    def __init__(self, command: list[str]):
         self.command = command
         self.pipeline = [(i, arg) for i, arg in enumerate(self.command) if arg in Pipers.OPS]
 
-    def parse_command(self, variablized: bool = False, **kwargs):
+    def parse_command(self, variablized: bool = False, **kwargs) -> Union[list[str], str]:
         if not self.pipeline:
             return self.command
 
@@ -383,9 +382,14 @@ class Commander:
             if '>' in val:
                 return i
 
+        return 0
+
     @staticmethod
     def get_bash_command(
-        parsed_line: list, start_index: int = None, wrapped: bool = None, command_char: str = ">"
+        parsed_line: list,
+        start_index: Union[int, None] = None,
+        wrapped: Union[bool, None] = None,
+        command_char: str = ">",
     ) -> list:
         """Parses line to bash command
 

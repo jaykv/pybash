@@ -97,7 +97,7 @@ def test_shell_commands():
     assert run_bash("$ls .github/*") == 'subprocess.run("ls .github/*", shell=True)\n'
 
 
-def test_static_interpolate():
+def test_direct_interpolate():
     assert run_bash(">git {{command}} {{option}}") == 'subprocess.run(["git","" + command + "","" + option + ""])\n'
     assert (
         run_bash(">git {{command}} {{process(option)}}")
@@ -109,12 +109,12 @@ def test_static_interpolate():
     )
 
 
-def test_dynamic_interpolate():
+def test_fstring_interpolate():
     assert (
-        run_bash(">kubectl get pods {{{\"--\" + \"-\".join(['show', 'labels'])}}} -n {{{ namespace  }}}")
-        == 'subprocess.run(["kubectl","get","pods","" + "--" + "-".join([\'show\', \'labels\']) + "","-n","" +  namespace   + ""])\n'
+        run_bash(">kubectl get pods f{\"--\" + \"-\".join(['show', 'labels'])} -n f{ namespace  }")
+        == 'subprocess.run(["kubectl","get","pods",f"""{"--" + "-".join([\'show\', \'labels\'])}""","-n",f"""{ namespace  }"""])\n'
     )
-    assert run_bash(">git {{{options['h']}}}") == 'subprocess.run(["git","" + options[\'h\'] + ""])\n'
+    assert run_bash(">git f{options['h']}") == 'subprocess.run(["git",f"""{options[\'h\']}"""])\n'
 
 
 def test_invalid_interpolate():
