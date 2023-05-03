@@ -112,9 +112,9 @@ def test_direct_interpolate():
 def test_fstring_interpolate():
     assert (
         run_bash(">kubectl get pods f{\"--\" + \"-\".join(['show', 'labels'])} -n f{ namespace  }")
-        == 'subprocess.run(["kubectl","get","pods",f"""{"--" + "-".join([\'show\', \'labels\'])}""","-n",f"""{ namespace  }"""])\n'
+        == 'subprocess.run(["kubectl","get","pods","" + f"""{"--" + "-".join([\'show\', \'labels\'])}""" + "","-n","" + f"""{ namespace  }""" + ""])\n'
     )
-    assert run_bash(">git f{options['h']}") == 'subprocess.run(["git",f"""{options[\'h\']}"""])\n'
+    assert run_bash(">git f{options['h']}") == 'subprocess.run(["git","" + f"""{options[\'h\']}""" + ""])\n'
 
 
 def test_invalid_interpolate():
