@@ -62,9 +62,8 @@ class Processor:
         if not subs:
             return parsed_command
 
-        command_pattern = f'\"{pattern}\"'
         for sub in subs:
-            parsed_command = re.sub(command_pattern, 'f\"\"\"{' + sub + '}\"\"\"', parsed_command, 1)
+            parsed_command = re.sub(pattern, '" + f\"\"\"{' + sub + '}\"\"\" + "', parsed_command, 1)
 
         return parsed_command
 
