@@ -2,10 +2,10 @@
 
 # dynamic interpolation
 options = {'version': '-v', 'help': '-h'}
->git {{{options['help']}}}
+>git f{options['help']}
 
 namespace = "coffee"
->kubectl get pods {{{"--" + "-".join(['show', 'labels'])}}} --namespace {{{namespace}}}
+>kubectl get pods f{"--" + "-".join(['show', 'labels'])} --namespace f{namespace}
 
 # static interpolation
 git_command = "status"

@@ -1,12 +1,12 @@
 ##
 # Setup hook
-import pybash
+from pybash.hook import add_hook
 
-pybash.add_hook()
+add_hook()
 
 ##
-# Import demo script and run
+# Import demo script to run
 if __name__ == "__main__":
     import demo
 
-    demo.run()
+    print(f"running {demo}")

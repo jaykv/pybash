@@ -1,8 +1,7 @@
 import pytest
 
-import pybash
-
-run_bash = pybash.Transformer.transform_source
+from pybash.transformer import InvalidInterpolation
+from pybash.transformer import transform as run_bash
 
 
 def test_single_exec():
@@ -118,7 +117,7 @@ def test_fstring_interpolate():
 
 
 def test_invalid_interpolate():
-    with pytest.raises(pybash.InvalidInterpolation):
+    with pytest.raises(InvalidInterpolation):
         assert run_bash(">git {{command}} {{ option }}")
         assert run_bash(">git {{command}} {{'\"'.join(option)}}")
         assert run_bash(">git {{command}} {{a['key']}}")

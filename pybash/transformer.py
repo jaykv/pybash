@@ -3,21 +3,6 @@ import shlex
 from typing import Callable, Union
 
 import token_utils
-from ideas import import_hook
-
-
-def source_init():
-    """Adds subprocess import"""
-    return "import subprocess"
-
-
-def add_hook(**_kwargs):
-    """Creates and automatically adds the import hook in sys.meta_path"""
-    return import_hook.create_hook(
-        hook_name=__name__,
-        transform_source=Transformer.transform_source,
-        source_init=source_init,
-    )
 
 
 class InvalidInterpolation(Exception):
@@ -47,7 +32,8 @@ class Processor:
     def fstring_interpolate(token_string: str, parsed_command: str) -> str:
         """Process f{ dynamic interpolations } and substitute.
             Dynamic interpolations are denotated by a f{ } with any expression inside.
-            Substitution in the parsed command string happens relative to the order of the interpolations in the original command string.
+            Substitution in the parsed command string happens relative to the order of the
+            interpolations in the original command string.
 
         Args:
             token_string (str): Original command string
@@ -71,7 +57,8 @@ class Processor:
     def direct_interpolate(string: str) -> str:
         """Process {{ static interpolations }} and substitute.
             Static interpolations are denotated by a {{ }} with a variable or a function call inside.
-            Substitution happens directly on the parsed command string. Therefore, certain characters cannot be interpolated as they get parsed out before substitution.
+            Substitution happens directly on the parsed command string. Therefore, certain characters
+            cannot be interpolated as they get parsed out before substitution.
 
         Args:
             string (str): String to interpolate
@@ -150,42 +137,6 @@ class Wrapped(Processor):
         )
 
         return self.token
-
-
-class Transformer:
-    tokenizers = {"$": Shelled, ">": Execed}
-    greedy_tokenizers = {"= >": Variablized, "(>": Wrapped}
-
-    @staticmethod
-    def transform_source(source, **_kwargs):
-        """Convert >bash commands to subprocess calls"""
-        new_tokens = []
-        for line in token_utils.get_lines(source):
-            token = token_utils.get_first(line)
-            if not token:
-                new_tokens.extend(line)
-                continue
-
-            if token_match := [tokenizer for match, tokenizer in Transformer.tokenizers.items() if token == match]:
-                parser = token_match[0](token)
-                parser.transform()
-                parser.interpolate()
-                new_tokens.append(parser.token)
-                continue
-
-            if greedy_match := [
-                tokenizer for match, tokenizer in Transformer.greedy_tokenizers.items() if match in token.line
-            ]:
-                parser = greedy_match[0](token)
-                parser.transform()
-                parser.interpolate()
-                new_tokens.append(parser.token)
-                continue
-
-            # no match
-            new_tokens.extend(line)
-
-        return token_utils.untokenize(new_tokens)
 
 
 class Pipers:
@@ -459,3 +410,36 @@ class Commander:
                 command += f", {k}={v}"
         command += ")"
         return command
+
+
+TOKENIZERS = {"$": Shelled, ">": Execed}
+GREEDY_TOKENIZERS = {"= >": Variablized, "(>": Wrapped}
+
+
+def transform(source, **_kwargs):
+    """Convert >bash commands to subprocess calls"""
+    new_tokens = []
+    for line in token_utils.get_lines(source):
+        token = token_utils.get_first(line)
+        if not token:
+            new_tokens.extend(line)
+            continue
+
+        if token_match := [tokenizer for match, tokenizer in TOKENIZERS.items() if token == match]:
+            parser = token_match[0](token)
+            parser.transform()
+            parser.interpolate()
+            new_tokens.append(parser.token)
+            continue
+
+        if greedy_match := [tokenizer for match, tokenizer in GREEDY_TOKENIZERS.items() if match in token.line]:
+            parser = greedy_match[0](token)
+            parser.transform()
+            parser.interpolate()
+            new_tokens.append(parser.token)
+            continue
+
+        # no match
+        new_tokens.extend(line)
+
+    return token_utils.untokenize(new_tokens)

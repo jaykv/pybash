@@ -1,6 +1,6 @@
 check: lint test
 
-SOURCE_FILES=pybash.py test_pybash.py run.py
+SOURCE_FILES=pybash test_pybash.py run.py
 
 install:
 	pip install -e .
@@ -38,5 +38,8 @@ lint:
 
 shell:
 	source $(poetry env info --path)/bin/activate
+
+debug:
+	python -m ideas demo -a pybash.hook -s
 
 .PHONY: test clean
