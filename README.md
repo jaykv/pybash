@@ -11,14 +11,22 @@ For security and performance reasons, PyBash will NOT execute as shell, unless e
 
 Note: this is a mainly experimental library. Consider the risks and test before using in prod.
 
-# Installation
+# Setup
+
+## As standalone transformer
 `pip install pybash`
 
-# Setup hook
+
 ```python
-import pybash
-pybash.add_hook()
+from pybash.transformer import transform
+
+transform(">echo hello world") # returns the python code for the bash command as string
 ```
+
+# As ideas hook
+`pip install "pybash[ideas]"`
+
+See [run.py](run.py) for an example.
 
 # Usage
 
@@ -149,5 +157,5 @@ cp_test()
 #### Demo
 `python run.py`
 
-#### Debugging
-`python -m ideas demo -a pybash -s` to view the transformed source code
+#### Debug
+`make debug` to view the transformed source code
