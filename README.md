@@ -9,7 +9,7 @@ Streamline bash-command execution from python with a new syntax. It combines the
 
 For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `$` instead of a single `>` before the command. While running commands as shell can be convenient, it can also spawn security risks if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
 
-Note: this is a mainly experimental library. Consider the risks and test before using in prod.
+Note: this is a mainly experimental library.
 
 # Setup
 
@@ -23,7 +23,7 @@ from pybash.transformer import transform
 transform(">echo hello world") # returns the python code for the bash command as string
 ```
 
-# As ideas hook
+## As ideas hook
 `pip install "pybash[ideas]"`
 
 See [run.py](run.py) for an example.
