@@ -19,6 +19,7 @@ option = "-v"
 #print(f"test: {a}")
 
 # 1. use inside methods
+>echo "SORT TEST\nHELLO WORLD" > test.txt
 def cp_test():
     print("1. >cp test.txt test_copy.txt")
     >cp test.txt test_copy.txt
