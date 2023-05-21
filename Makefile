@@ -11,9 +11,6 @@ test:
 dev:
 	python run.py
 
-debug:
-	python -m ideas demo -a pybash -s
-
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache
 	find . -name '*.pyc' -type f -exec rm -rf {} +
@@ -40,6 +37,6 @@ shell:
 	source $(poetry env info --path)/bin/activate
 
 debug:
-	python -m ideas demo -a pybash.hook -s
+	python -m ideas examples.demo -a pybash.hook -s
 
 .PHONY: test clean

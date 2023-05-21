@@ -23,12 +23,23 @@ from pybash.transformer import transform
 transform(">echo hello world") # returns the python code for the bash command as string
 ```
 
-## As ideas hook
-`pip install "pybash[ideas]"`
+## As script runner
+`pip install "pybash[script]"`
 
-See [run.py](run.py) for an example.
 
-# Usage
+### Example 
+```py
+#
+text = "HELLO WORLD"
+>echo f{text}
+```
+
+### Run script:
+```bash
+$ python -m pybash hello.py
+```
+
+# Supported transforms
 
 ### 1. Simple execution with output
 ```python
@@ -155,7 +166,8 @@ cp_test()
 # Dev
 
 #### Demo
-`python run.py`
+`python -m pybash examples/hello.py`
+`python -m pybash demo`
 
 #### Debug
 `make debug` to view the transformed source code

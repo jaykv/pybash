@@ -8,7 +8,7 @@ def source_init():
     return "import subprocess"
 
 
-def add_hook(**_kwargs):
+def add_hook():
     """Creates and automatically adds the import hook in sys.meta_path"""
     return import_hook.create_hook(
         hook_name=__name__,

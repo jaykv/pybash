@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "PyBash"
-version = "0.3.0"
+version = "0.3.1"
 description = ">execute bash commands from python easily"
 authors = ["Jay <jay.github0@gmail.com>"]
 readme = "README.md"
@@ -12,7 +12,7 @@ ideas = { version = "^0.1.5", optional = true }
 token-utils = "^0.1.8"
 
 [tool.poetry.extras]
-ideas = ["ideas"]
+script = ["ideas"]
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"
