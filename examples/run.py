@@ -9,4 +9,4 @@ add_hook()
 if __name__ == "__main__":
     import demo
 
-    print(f"running {demo}")
+    print(f"~ completed running {demo}")

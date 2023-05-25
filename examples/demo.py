@@ -1,4 +1,5 @@
 # PYBASH DEMO #
+# run with either: python run.py or python -m pybash demo.py
 
 # dynamic interpolation
 options = {'version': '-v', 'help': '-h'}
