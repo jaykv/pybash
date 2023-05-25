@@ -1,3 +1,3 @@
 
 text = "HELLO WORLD"
->echo f{text}
+$ echo f{text}

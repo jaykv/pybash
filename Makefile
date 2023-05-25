@@ -1,6 +1,6 @@
 check: lint test
 
-SOURCE_FILES=pybash test_pybash.py run.py
+SOURCE_FILES=pybash test_pybash.py
 
 install:
 	pip install -e .

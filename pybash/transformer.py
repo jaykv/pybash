@@ -10,7 +10,7 @@ class InvalidInterpolation(Exception):
 
 
 class Processor:
-    command_char = ">"
+    command_char = "$"
 
     def __init__(self, token: token_utils.Token) -> None:
         self.token = token
@@ -78,7 +78,7 @@ class Processor:
 
 class Shelled(Processor):
     # $ls .github/*
-    command_char = "$"
+    command_char = ">"
 
     def transform(self) -> token_utils.Token:
         command_str = " ".join(self.command)
@@ -107,12 +107,13 @@ class Variablized(Processor):
 
     def transform(self) -> None:
         pipeline_command = Pipeline(self.command).parse_command(variablized=True)
+
         if pipeline_command != self.command:
             self.token.string = pipeline_command
             self.token.string += ';' if pipeline_command[-1] != ';' else ''
             self.token.string += ' '.join(self.parsed_line[: self.start_index]) + ' cmd1\n'
         else:
-            self.token.string = ' '.join(self.parsed_line[: self.start_index])
+            self.token.string = ' '.join(self.parsed_line[: self.start_index]) + ' '
             self.token.string += Commander.build_subprocess_list_cmd("check_output", self.command) + '\n'
 
 
@@ -128,7 +129,7 @@ class Wrapped(Processor):
         # shlex strips out single quotes and double quotes-- use raw_line for the code around the wrapped command
         self.token.string = (
             ' '.join(self.raw_line[: self.start_index])
-            + self.raw_line[self.start_index][: self.raw_line[self.start_index].index('>')]
+            + self.raw_line[self.start_index][: self.raw_line[self.start_index].index('$')]
         )
         self.token.string += (
             Commander.build_subprocess_list_cmd("check_output", self.command)
@@ -329,7 +330,7 @@ class Commander:
             int: starting index
         """
         for i, val in enumerate(parsed_line):
-            if '>' in val:
+            if '$' in val:
                 return i
 
         return 0
@@ -339,7 +340,7 @@ class Commander:
         parsed_line: list,
         start_index: Union[int, None] = None,
         wrapped: Union[bool, None] = None,
-        command_char: str = ">",
+        command_char: str = "$",
     ) -> list:
         """Parses line to bash command
 
@@ -361,6 +362,8 @@ class Commander:
         # > may be at the beginning or somewhere in the middle of this arg
         # examples: >ls, print(>cat => strip up to and including >
         command[0] = command[0][command[0].index(command_char) + 1 :].strip()
+        if command[0] == '':
+            del command[0]
 
         # remove everything after and including first )- not part of the command
         if wrapped:
@@ -412,8 +415,8 @@ class Commander:
         return command
 
 
-TOKENIZERS = {"$": Shelled, ">": Execed}
-GREEDY_TOKENIZERS = {"= >": Variablized, "(>": Wrapped}
+TOKENIZERS = {">": Shelled, "$": Execed}
+GREEDY_TOKENIZERS = {"= $": Variablized, "($": Wrapped}
 
 
 def transform(source, **_kwargs):
@@ -443,3 +446,8 @@ def transform(source, **_kwargs):
         new_tokens.extend(line)
 
     return token_utils.untokenize(new_tokens)
+
+
+if __name__ == "__main__":
+    pyscript = transform("test = $ echo hi")
+    print(pyscript)
