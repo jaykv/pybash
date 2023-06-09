@@ -51,7 +51,7 @@ class Processor:
         for sub in subs:
             parsed_command = re.sub(pattern, '" + f\"\"\"{' + sub + '}\"\"\" + "', parsed_command, 1)
 
-        return parsed_command
+        return parsed_command.replace('"" + f"""', 'f"""').replace('""" + ""', '"""')
 
     @staticmethod
     def direct_interpolate(string: str) -> str:
@@ -73,7 +73,8 @@ class Processor:
         if matches and any(any(bad_char in match for bad_char in invalid_chars) for match in matches):
             raise InvalidInterpolation
 
-        return re.sub(r'{{(.+?)}}', r'" + \1 + "', string)
+        interpolated = re.sub(r'{{(.+?)}}', r'" + \1 + "', string)
+        return interpolated.replace('"" + ', '').replace(' + ""', '')
 
 
 class Shelled(Processor):
