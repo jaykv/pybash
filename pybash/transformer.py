@@ -54,7 +54,7 @@ class Processor:
         return parsed_command.replace('"" + f"""', 'f"""').replace('""" + ""', '"""')
 
     @staticmethod
-    def direct_interpolate(string: str) -> str:
+    def direct_interpolate(token_string: str) -> str:
         """Process {{ static interpolations }} and substitute.
             Static interpolations are denotated by a {{ }} with a variable or a function call inside.
             Substitution happens directly on the parsed command string. Therefore, certain characters
@@ -64,21 +64,24 @@ class Processor:
             string (str): String to interpolate
 
         Returns:
-            str: Interpolated string
+            str: Interpolated or given token string
         """
 
         # validate interpolation
         invalid_chars = [' ', '"', "'"]
-        matches = re.findall(r'{{(.+?)}}', string)
-        if matches and any(any(bad_char in match for bad_char in invalid_chars) for match in matches):
+        matches = re.findall(r'{{(.+?)}}', token_string)
+        if not matches:
+            return token_string
+
+        if any(any(bad_char in match for bad_char in invalid_chars) for match in matches):
             raise InvalidInterpolation
 
-        interpolated = re.sub(r'{{(.+?)}}', r'" + \1 + "', string)
-        return interpolated.replace('"" + ', '').replace(' + ""', '')
+        interpolated = re.sub(r'{{(.+?)}}', r'" + \1 + "', token_string)
+        return interpolated.replace(',"" + ', ',').replace(' + ""', '')
 
 
 class Shelled(Processor):
-    # $ls .github/*
+    # >ls .github/*
     command_char = ">"
 
     def transform(self) -> token_utils.Token:
@@ -88,7 +91,7 @@ class Shelled(Processor):
 
 
 class Execed(Processor):
-    # >ls -la
+    # $ls -la
     def transform(self) -> token_utils.Token:
         pipeline_command = Pipeline(self.command).parse_command()
         if pipeline_command != self.command:
@@ -100,7 +103,7 @@ class Execed(Processor):
 
 
 class Variablized(Processor):
-    # a = >cat test.txt
+    # a = $cat test.txt
     def parse(self) -> None:
         self.parsed_line = shlex.split(self.token.line)
         self.start_index = Commander.get_start_index(self.parsed_line)
@@ -119,7 +122,7 @@ class Variablized(Processor):
 
 
 class Wrapped(Processor):
-    # print(>cat test.txt)
+    # print($cat test.txt)
     def parse(self) -> None:
         self.parsed_line = shlex.split(self.token.line)
         self.raw_line = [tok for tok in self.token.line.split(' ') if tok]
@@ -189,17 +192,17 @@ class Pipers:
             fvar = f"fout{idx}"
             cmd = ""
             if piper == '>':
-                # >sort < test.txt > test2.txt
+                # $sort < test.txt > test2.txt
                 cmd = cls.write_to_file(
                     command, pipeline, reader='cmd1.stdout.read()', start_index=first_idx + 1, fmode="wb"
                 )
             elif piper == '>>':
-                # >sort < test.txt >> test2.txt
+                # $sort < test.txt >> test2.txt
                 cmd = cls.write_to_file(
                     command, pipeline, reader='cmd1.stdout.read()', start_index=first_idx + 1, fmode="ab"
                 )
             elif piper == '|':
-                # >sort < test.txt | grep "HELLO"
+                # $sort < test.txt | grep "HELLO"
                 cmd = cls.get_piper(piper)(
                     command, pipeline, start_index=first_idx + 1, stdin="cmd1.stdout", chained=True
                 )
@@ -353,15 +356,15 @@ class Commander:
         Returns:
             list: parsed command list
         """
-        # find which arg index the > is at
+        # find which arg index the $ is at
         if not start_index:
             start_index = Commander.get_start_index(parsed_line)
 
         # strip everything before that index-- not part of the command
         command = parsed_line[start_index:]
 
-        # > may be at the beginning or somewhere in the middle of this arg
-        # examples: >ls, print(>cat => strip up to and including >
+        # $ may be at the beginning or somewhere in the middle of this arg
+        # examples: $ls, print(>cat => strip up to and including >
         command[0] = command[0][command[0].index(command_char) + 1 :].strip()
         if command[0] == '':
             del command[0]
