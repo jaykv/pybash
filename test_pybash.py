@@ -120,6 +120,12 @@ def test_fstring_interpolate():
         == 'subprocess.run(["kubectl","get","pods",f"""{"--" + "-".join([\'show\', \'labels\'])}""","-n",f"""{ namespace  }"""])\n'
     )
     assert run_bash("$git f{options['h']}") == 'subprocess.run(["git",f"""{options[\'h\']}"""])\n'
+    assert run_bash("$f{HOME_DIR}/bin/python -sE") == 'subprocess.run([f"""{HOME_DIR}""" + "/bin/python","-sE"])\n'
+
+
+def test_interpolate_combo():
+    assert run_bash("$echo 'f{PODS} 123' {{ARGS}}") == 'subprocess.run(["echo",f"""{PODS}""" + " 123",ARGS])\n'
+    assert run_bash("$git {{COMMAND}} f{ARGS} -v") == 'subprocess.run(["git",COMMAND,f"""{ARGS}""","-v"])\n'
 
 
 def test_invalid_interpolate():

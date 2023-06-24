@@ -1,4 +1,4 @@
-check: lint test
+check: format lint test clean
 
 SOURCE_FILES=pybash test_pybash.py
 
