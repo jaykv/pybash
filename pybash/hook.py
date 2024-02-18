@@ -5,7 +5,7 @@ from pybash.transformer import transform
 
 def source_init():
     """Adds subprocess import"""
-    return "import subprocess"
+    return "import subprocess\n"
 
 
 def add_hook():
