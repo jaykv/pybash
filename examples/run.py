@@ -1,4 +1,3 @@
-##
 # Setup hook
 from pybash.hook import add_hook
 

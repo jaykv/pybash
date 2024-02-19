@@ -29,7 +29,6 @@ transform("$echo hello world") # returns the python code for the bash command as
 
 ### Example 
 ```py
-#
 text = "HELLO WORLD"
 $echo f{text}
 ```
