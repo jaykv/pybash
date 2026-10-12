@@ -1,172 +1,179 @@
 # PyBash
 
-![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/pybash/python-app.yml?branch=main)
+![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/pybash/ci.yml?branch=main)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pybash)
 ![PyPI](https://img.shields.io/pypi/v/pybash)
 ![GitHub](https://img.shields.io/github/license/jaykv/pybash)
 
-Streamline bash-command execution from python with a new syntax. It combines the simplicity of writing bash scripts with the flexibility of python. Under the hood, any line or variable assignment starting with `$` or surrounded by parentheses is transformed to python `subprocess` calls and then injected into `sys.meta_path` as an import hook. All possible thanks to the wonderful [ideas](https://github.com/aroberge/ideas) project!
-
-For security and performance reasons, PyBash will NOT execute as shell, unless explicitly specified with a `>` instead of a single `$` before the command. While running commands as shell can be convenient, it can also spawn security risks if you're not too careful. If you're curious about the transformations, look at the [unit tests](test_pybash.py) for some quick examples.
-
-Note: this is a mainly experimental library.
-
-# Setup
-
-## As standalone transformer
-`pip install pybash`
-
+Write shell commands directly in Python. PyBash rewrites lines that start with `$` or `>` into
+`subprocess` calls, so you get the brevity of a shell script with the rest of Python around it.
 
 ```python
-from pybash.transformer import transform
-
-transform("$echo hello world") # returns the python code for the bash command as string
+branch = ($git rev-parse --abbrev-ref HEAD).decode().strip()
+$git fetch origin && git rebase origin/{{branch}} || echo "rebase failed"
+count = $git log --oneline | wc -l
+print(f"{branch}: {int(count)} commits")
 ```
 
-## As script runner
-`pip install "pybash[script]"`
+- `$` commands never go through a shell. Arguments are split at transform time, and pipes, redirects
+  and `&&` / `||` / `;` are run by PyBash itself, so a value can never turn into shell syntax.
+- `>` commands are handed to the shell as written, for globbing and expansion. Interpolated values are
+  quoted for you.
+- One line in, one line out: tracebacks point at the line you wrote.
+- No dependencies. Python 3.11+.
 
+## Install
 
-### Example 
-```py
-text = "HELLO WORLD"
-$echo f{text}
-```
-
-### Run script:
 ```bash
-python -m pybash hello.py
+pip install pybash
 ```
 
-# Supported transforms
+## Use
 
-### 1. Simple execution with output
+### Run a script
+
+```bash
+pybash script.py [args...]      # or: python -m pybash script.py
+pybash --show script.py         # print the generated Python instead of running it
+pybash -c '$echo hello'
+```
+
+Modules the script imports from its own project may use the syntax too.
+
+### Transform source yourself
+
+```python
+from pybash import transform
+
+transform("$echo hello world")   # 'subprocess.run(["echo", "hello", "world"])'
+```
+
+Plain commands compile to bare `subprocess` calls. Commands with operators call a small helper in
+`pybash.runtime`; by default the generated code imports it in place, so the output only needs
+`import subprocess`. For tidier output, name the helper yourself and add the header:
+
+```python
+import pybash
+
+body = pybash.transform(source, runtime=pybash.RUNTIME_NAME)
+code = pybash.header() + body                   # imports pybash.runtime
+code = pybash.header(standalone=True) + body    # pastes the helper in: no pybash needed at run time
+```
+
+`pybash.compile_source(source, filename)` returns a code object ready for `exec`, and
+`pybash.add_hook()` installs an import hook for the current process.
+
+Mistakes raise `PybashSyntaxError`, a `SyntaxError` whose `filename`, `lineno`, `offset` and `text`
+point at the original line.
+
+## Syntax
+
+### Run: `$command`
+
 ```python
 $python --version
-$echo \\nthis is an echo
-```
-outputs:
-```
-Python 3.9.15
-
-this is an echo
+$cp test.txt test_copy.txt
 ```
 
-### 2. Set output to variable and parse
+Returns the `subprocess.CompletedProcess`. A non-zero exit does not raise.
+
+### Capture: `x = $command`, `($command)`, `$(command)`
+
 ```python
 out = $cat test.txt
-test_data = out.decode('utf-8').strip()
-print(test_data.replace("HELLO", "HOWDY"))
-```
-outputs:
-```
-HOWDY WORLD
+print(($cat test.txt).decode().strip())
+lines = $(wc -l test.txt).decode().split()[0]
 ```
 
-### 3. Wrapped, in-line execution and parsing
-```python
-print(($cat test.txt).decode('utf-8').strip())
-```
-outputs:
-```
-HELLO WORLD
-```
+Captures are `bytes`, and raise `subprocess.CalledProcessError` on a non-zero exit.
+A capture not wrapped in brackets runs to the end of the line.
 
-### 4. Redirection
-```python
-$echo "hello" >> test4.txt
-```
+### Operators
 
-### 5. Pipe chaining
-```python
-$cat test.txt | sed 's/HELLO/HOWDY/g' | sed 's/HOW/WHY/g' | sed 's/WHY/WHEN/g'
-```
-outputs:
-```
-WHENDY WORLD
-```
-
-### 6. Redirection chaining
-```python
-$cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test1.txt >> test2.txt > test3.txt
-```
-
-### 7. Chaining pipes and redirection- works in tandem!
-```python
-$cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test5.txt
-```
-
-### 8. Input redirection
-```python
-$sort < test.txt >> sorted_test.txt
-```
+| Operator | Meaning |
+|---|---|
+| `a \| b` | pipe stdout of `a` into `b` |
+| `a \|& b` | pipe stdout and stderr |
+| `a && b`, `a \|\| b`, `a ; b` | run `b` if `a` succeeded / failed / either way |
+| `< file` | read stdin from a file |
+| `> file`, `>> file` | write / append stdout |
+| `2> file`, `2>> file` | write / append stderr |
+| `&> file`, `&>> file` | write / append both |
+| `2>&1`, `>&2` | send stderr to stdout / stdout to stderr |
 
 ```python
-$sort < test.txt | sed 's/SORT/TEST\\n/g'
-```
-### 9. Glob patterns with shell
-```python
->ls .github/*
+$sort < in.txt | uniq -c | sort -rn > counts.txt
+$make build > build.log 2>&1 && echo ok || echo failed
+newest = $ls -t | head -n 1
 ```
 
-### 10. Direct interpolation
-Denoted by {{code here}}. Interpolated as direct code replace. The value/output of the variable, function call, or the expression must not include spaces.
+Operators work without surrounding spaces (`a|b`, `2>err.log`). Quote or escape one to pass it as
+text: `$echo 'a && b' \| c`. Several output files on one command all receive the output
+(`$echo hi > a.txt >> b.txt`).
+
+Background jobs (`&`), here-documents (`<<`) and other file descriptors are not supported in `$`
+commands; use a `>` shell command for those.
+
+### Quoting
+
+`$` commands follow POSIX shell quoting: single quotes are literal, double quotes allow `\"` and `\\`,
+and a backslash escapes the next character. An unquoted `#` at the start of a word begins a comment.
+There is no globbing, `~` or `$VAR` expansion; use `>` when you need the shell.
+
+A trailing backslash continues the command on the next line.
+
+### Interpolation
+
+| Form | Meaning |
+|---|---|
+| `{{ expr }}` | the value of any Python expression, converted with `str()` |
+| `f{ expr }` | the same, with f-string formatting available: `f{n:03d}`, `f{name!r}` |
 
 ```python
-## GOOD
-command = "status"
-def get_option(command):
-    return "-s" if command == "status" else "-v"
 $git {{command}} {{get_option(command)}}
-
-display_type = "labels"
-$kubectl get pods --show-{{display_type}}=true
-
-## BAD
-option = "-s -v"
-$git status {{option}}
-
-options = ['-s', '-v']
-$git status {{" ".join(options)}}
-
-# use dynamic interpolation
-options = {'version': '-v'}
-$git status {{options['version']}}
+$kubectl get pods --show-{{display_type}}=true -n f{namespace}
+$echo "{{user}} has f{count:,} files"
 ```
 
-### 11. f-string interpolation
-Denoted by f{ any python variable, function call, or expression here }. Interpolated as f-string. The output of the variable, function call, or the expression must still not include spaces.
+In a `$` command an interpolated value is always exactly one argument, whatever it contains.
+Interpolation also applies inside quotes. To write the markers literally, escape them: `\{{` and `\f{`.
+
+### Shell: `>command`
 
 ```python
-## GOOD
-
-# git -h
-options = {'version': '-v', 'help': '-h'}
-$git f{options['h']}
-
-# kubectl get pods --show-labels -n coffee
-namespace = "coffee"
-$kubectl get pods f{"--" + "-".join(['show', 'labels'])} -n f{namespace}
-
-## BAD
-option = "-s -v"
-$git status f{option}
+>ls .github/* | wc -l
+>echo "hello {{name}}" > out.txt
 ```
 
-#### Also works inside methods!
+The line is passed to the shell untouched. Interpolated values are quoted for where they appear
+(bare, inside `"..."` or inside `'...'`), so they are always data. To splice shell syntax in on
+purpose, use `{{! expr }}`:
+
 ```python
-# PYBASH DEMO #
-def cp_test():
-    $cp test.txt test_copy.txt
-
-cp_test()
+pattern = "*.txt"
+>ls {{! pattern }}
 ```
 
-# Dev
+## Upgrading from 0.3
 
-#### Demo
-`python -m pybash examples/hello.py`
-`python -m pybash demo`
+- Python 3.11+ is required; the `ideas` and `token-utils` dependencies are gone.
+- Arguments reach the command exactly as a shell would pass them. Previously backslashes were
+  re-interpreted by Python (`'a\\nb'` became a newline) and a `"` inside an argument produced invalid code.
+- `{{ x }}` is converted with `str()`, may contain spaces and quotes, and no longer raises `InvalidInterpolation`
+  for them.
+- Interpolated values in `>` commands are now quoted. Use `{{! x }}` for the old raw behavior.
+- `>` commands keep their quoting; previously quotes were stripped before the shell saw them.
+- `a = $x | y` now captures the pipeline's output instead of assigning a process object, and no
+  `cmd1` / `fout` variables leak into your code.
+- `$a > f1 > f2` writes the output to both files; previously the second file received a copy of the first.
+- `&&`, `||`, `;`, `2>`, `&>`, `2>&1`, `|&` and `$( )` are new. `&&` used to raise `NotImplementedError`.
+- Generated lists are formatted `["ls", "-la"]` and the result no longer ends with an added newline.
+- Text such as `"total = $5"` or `"($x)"` inside a Python string is no longer mistaken for a command.
 
-#### Debug
-`make debug` to view the transformed source code
+## Development
+
+```bash
+uv sync
+make check     # format, lint (ruff + mypy), test
+make demo
+```

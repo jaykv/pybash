@@ -1,60 +1,40 @@
 # PYBASH DEMO #
-# run with either: python run.py or python -m pybash demo.py
+# run with: pybash demo.py   (or: python -m pybash demo.py)
+# see the generated Python with: pybash --show demo.py
 
-# dynamic interpolation
-options = {'version': '-v', 'help': '-h'}
-$git f{options['help']}
+# 1. run a command; works anywhere a statement does
+$printf 'SORT TEST\nHELLO WORLD\n' > test.txt
 
-namespace = "coffee"
-$kubectl get pods f{"--" + "-".join(['show', 'labels'])} --namespace f{namespace}
-
-# static interpolation
-git_command = "status"
-option = "-v"
-
-$git {{git_command}} {{option}}
-
-#TODO:
-#a = $echo "hello" >> test.txt
-#a = $sort < test.txt | grep "HELLO"
-#print(f"test: {a}")
-
-# 1. use inside methods
-$echo "SORT TEST\nHELLO WORLD" > test.txt
 def cp_test():
-    print("1. >cp test.txt test_copy.txt")
     $cp test.txt test_copy.txt
 
 cp_test()
 
-# 2. simple bash command execution with output
-print("2. >python --version\n   >echo \\nthis is an echo")
-$python --version
-$echo \\nthis is an echo
-
-# 3. set output to python variable directly
+# 2. capture output as bytes
 out = $cat test.txt
-test_data = out.decode('utf-8').strip()
-print(test_data.replace("HELLO", "HOWDY"))
+print(out.decode().strip().replace("HELLO", "HOWDY"))
 
-# 4. wrapped, in-line execution
-print(($cat test.txt).decode('utf-8').strip())
+# 3. capture inline, with ($ ...) or $(...)
+print(($cat test.txt).decode().strip())
+print($(wc -l test.txt).decode().split()[0], "lines")
 
-# 5. redirection
-$echo "hello" >> test4.txt
-
-# 6. pipe chaining
-$cat test.txt | sed 's/HELLO/HOWDY/g' | sed 's/HOW/WHY/g' | sed 's/WHY/WHEN/g'
-
-# 7. chaining pipes and redirection- works with all!
-$cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test5.txt
-
-# 8. chained redirection
-$cat test.txt | sed 's/HELLO/HOWDY\\n/g' > test1.txt >> test2.txt > test3.txt
-
-# 9. input redirection
+# 4. pipes, redirects and && || ; run without a shell
+$cat test.txt | sed 's/HELLO/HOWDY/g' | sed 's/HOW/WHY/g'
 $sort < test.txt >> sorted_test.txt
-$sort < test.txt | sed 's/SORT/TEST\\n/g'
+$test -f sorted_test.txt && echo "sorted" || echo "not sorted"
+$ls no-such-file 2> errors.txt; echo "kept going"
+count = $sort test.txt | uniq | wc -l
+print("unique lines:", int(count))
 
-# 10. Glob patterns
->ls ./*
+# 5. interpolate Python values; each one is always a single argument
+name = "world; echo not-a-second-command"
+$echo hello {{name}}
+$echo f{len(name):04d} chars
+
+# 6. a real shell when you want globbing or expansion: start the line with >
+>ls ./*.txt | head -n 3
+>echo "safely quoted: {{name}}"
+
+# 7. long commands can continue onto the next line
+$rm -f test.txt test_copy.txt \
+    sorted_test.txt errors.txt
