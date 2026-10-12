@@ -1,37 +1,66 @@
-[tool.poetry]
-name = "PyBash"
-version = "0.3.5"
-description = ">execute bash commands from python easily"
-authors = ["Jay <jay.github0@gmail.com>"]
-readme = "README.md"
-packages = [{include = "pybash"}]
-
-[tool.poetry.dependencies]
-python = "^3.9"
-ideas = { version = "^0.1.5", optional = true }
-token-utils = "^0.1.8"
-
-[tool.poetry.extras]
-script = ["ideas"]
-
-[tool.poetry.group.dev.dependencies]
-black = "^22.12.0"
-pytest = "^7.2.1"
-isort = "^5.11.4"
-flake8 = "^6.0.0"
-autoflake = "^2.0.0"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.black]
+[project]
+name = "PyBash"
+version = "0.4.0"
+description = ">execute bash commands from python easily"
+authors = [{ name = "Jay", email = "jay.github0@gmail.com" }]
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+keywords = ["bash", "shell", "subprocess", "transpiler"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: System :: Shells",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+# Kept so `pip install "pybash[script]"` still works; the runner no longer needs extra packages.
+script = []
+
+[project.urls]
+Repository = "https://github.com/jaykv/PyBash"
+
+[project.scripts]
+pybash = "pybash.__main__:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "ruff>=0.14",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pybash"]
+
+[tool.ruff]
 line-length = 120
-skip-string-normalization = 1
 
-[tool.isort]
-profile = "black"
-line_length = 120
-default_section = "THIRDPARTY"
-known_first_party = "pybash"
-known_third_party = ["ideas", "token_utils"]
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/*" = ["E", "F"]
+
+[tool.ruff.format]
+exclude = ["examples"]
+
+[tool.mypy]
+strict = true
+files = ["pybash", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

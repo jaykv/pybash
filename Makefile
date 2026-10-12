@@ -1,42 +1,30 @@
-check: format lint test clean
+check: format lint test
 
-SOURCE_FILES=pybash test_pybash.py
+SOURCE_FILES=pybash tests
 
 install:
-	pip install -e .
+	uv sync
 
 test:
-	pytest test_pybash.py -vv -rs
+	uv run pytest -vv -rs
 
-dev:
-	python run.py
+format:
+	uv run ruff format ${SOURCE_FILES}
+	uv run ruff check ${SOURCE_FILES} --fix
+
+lint:
+	uv run ruff format --check --diff ${SOURCE_FILES}
+	uv run ruff check ${SOURCE_FILES}
+	uv run mypy
+
+demo:
+	cd examples && uv run pybash demo.py
 
 clean:
-	rm -rf build/ dist/ *.egg-info .pytest_cache
-	find . -name '*.pyc' -type f -exec rm -rf {} +
+	rm -rf build/ dist/ *.egg-info .pytest_cache .mypy_cache .ruff_cache
 	find . -name '__pycache__' -exec rm -rf {} +
 
 package: clean
-	python -m build
+	uv build
 
-publish: package
-	twine upload dist/*
-
-format:
-	autoflake --in-place --recursive --remove-all-unused-imports --ignore-init-module-imports ${SOURCE_FILES}
-	isort --project=pybash ${SOURCE_FILES}
-	black ${SOURCE_FILES}
-
-lint:
-	isort --check --diff --project=pybash ${SOURCE_FILES}
-	black --check --diff ${SOURCE_FILES}
-	flake8 $(SOURCE_FILES) --count --show-source --statistics
-	flake8 $(SOURCE_FILES) --count --exit-zero --statistics
-
-shell:
-	source $(poetry env info --path)/bin/activate
-
-debug:
-	python -m ideas examples.demo -a pybash.hook -s
-
-.PHONY: test clean
+.PHONY: check install test format lint demo clean package
